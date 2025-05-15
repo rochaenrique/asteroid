@@ -12,7 +12,7 @@ rand_vec2 :: #force_inline proc(upper: rl.Vector2, lower := rl.Vector2{0, 0}) ->
 
 main :: proc() {
 	INIT_WINDOW_SZ :: [2]i32{800, 600}
-	INIT_ASTEROIDS_N :: 20
+	INIT_ASTEROIDS_N :: 50
 	
 	// rl.SetConfigFlags({rl.ConfigFlag.WINDOW_RESIZABLE})
 	rl.InitWindow(INIT_WINDOW_SZ.x, INIT_WINDOW_SZ.y, "Asteroid")

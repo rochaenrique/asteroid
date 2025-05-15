@@ -24,7 +24,6 @@ update_collisions :: proc(ents: []$Entity) {
 		}
 	}
 
-	fmt.printf("%d collisions\n", len(collisions))
 	solve_impulse(collisions)
 }
 
