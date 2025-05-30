@@ -1,12 +1,15 @@
 package asteroid
 import "core:fmt"
+import "core:c"
 import "core:math/rand"
 import rl "vendor:raylib"
 
-rand_vec2 :: #force_inline proc(upper: rl.Vector2, lower := rl.Vector2{0, 0}) -> rl.Vector2 {
-	return {
-		rand.float32_range(lower.x, upper.x), 
-		rand.float32_range(lower.x, upper.y)
+set_window_bounds :: proc(bounds: ^[2]rl.Vector2) {
+	width := cast(f32)rl.GetScreenWidth()
+	height := cast(f32)rl.GetScreenHeight()
+	bounds^ = {
+		rl.Vector2{width * -0.1, height * -0.1}, 
+		rl.Vector2{width * 1.1, height * 1.1}, 
 	}
 }
 
@@ -18,20 +21,16 @@ main :: proc() {
 	rl.InitWindow(INIT_WINDOW_SZ.x, INIT_WINDOW_SZ.y, "Asteroid")
 	rl.SetTargetFPS(60)
 	
-	window := rl.Vector2{
-		cast(f32)rl.GetScreenWidth(),
-		cast(f32)rl.GetScreenHeight()
-	}
-	
-	asteroids := make_asteroids(INIT_ASTEROIDS_N, window)
+	window_bounds : [2]rl.Vector2;
+	set_window_bounds(&window_bounds)
+
+	asteroids := make_asteroids(INIT_ASTEROIDS_N, &window_bounds)
 
     for !rl.WindowShouldClose() {
-		window = {
-			cast(f32)rl.GetScreenWidth(),
-			cast(f32)rl.GetScreenHeight()
-		}
+		if rl.IsWindowResized() do set_window_bounds(&window_bounds)
 
-		update_asteroids(window, asteroids, rl.GetFrameTime())
+		update_collisions(asteroids)
+		update_positions(&window_bounds, asteroids, rl.GetFrameTime())
 		
         rl.BeginDrawing()
         rl.ClearBackground(rl.BLACK)

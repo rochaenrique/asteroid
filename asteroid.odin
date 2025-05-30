@@ -4,19 +4,26 @@ import "core:math/rand"
 import rl "vendor:raylib"
 
 Asteroid :: struct {
-	center, force, velocity: rl.Vector2,
+	position, force, velocity: rl.Vector2,
 	radius, rotation: f32,
 	sides: i32
 }
 
-make_asteroids :: proc(num: int, loc: rl.Vector2) -> []Asteroid {
+rand_vec2 :: #force_inline proc(upper: rl.Vector2, lower := rl.Vector2{0, 0}) -> rl.Vector2 {
+	return {
+		rand.float32_range(lower.x, upper.x), 
+		rand.float32_range(lower.x, upper.y)
+	}
+}
+
+make_asteroids :: proc(num: int, window_bounds: ^[2]rl.Vector2) -> []Asteroid {
 	asteroids := make([]Asteroid, num)
 	for &ast in asteroids {
 		ast = Asteroid {
-			center = rand_vec2(loc),
+			position = rand_vec2(window_bounds[1]),
 			force = {0, 0},
-			velocity = rand_vec2(loc, -loc) / 10,
-			radius = loc.x/50 + loc.x/80 * rand.float32(),
+			velocity = rand_vec2(window_bounds[1], -window_bounds[1]) / 10,
+			radius = window_bounds[1].x/50 + window_bounds[1].x/80 * rand.float32(),
 			rotation = 0.0,
 			sides = 6 + rand.int31_max(4)
 		}
@@ -24,31 +31,10 @@ make_asteroids :: proc(num: int, loc: rl.Vector2) -> []Asteroid {
 	return asteroids
 }
 
-update_asteroids :: proc(loc: rl.Vector2, asteroids: []Asteroid, dt: f32) {
-	update_collisions(asteroids)
-	update_positions(loc, asteroids, dt)
-}
-
-update_positions :: proc(loc: rl.Vector2, asteroids: []Asteroid, dt: f32) {
-	for &ast in asteroids {
-		using ast
-		velocity += force * dt / radius
-		center += velocity * dt
-		
-		if center.x > loc.x do center.x -= loc.x
-		else if center.x < 0 do center.x += loc.x
-		
-		if center.y > loc.y do center.y -= loc.y
-		else if center.y < 0 do center.y += loc.y
-		
-		force = {0, 0}
-	}
-}
-
 draw_asteroids :: proc(asteroids: []Asteroid) {
 	for &ast in asteroids {
 		using ast
-		rl.DrawPoly(center, sides, radius, rotation, rl.GRAY)
+		rl.DrawPoly(position, sides, radius, rotation, rl.GRAY)
 	}
 }
 
