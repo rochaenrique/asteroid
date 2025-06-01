@@ -5,6 +5,7 @@ import "core:fmt"
 Game_Memory :: struct {
 	window_bounds: [2]rl.Vector2,
 	asteroids: []Asteroid,
+	player: Player,
 }
 
 g: ^Game_Memory
@@ -20,6 +21,8 @@ set_window_bounds :: proc(bounds: ^[2]rl.Vector2) {
 
 update :: proc() {
 	if rl.IsWindowResized() do set_window_bounds(&g.window_bounds)
+	update_player(&g.window_bounds, &g.player, rl.GetFrameTime())
+	player_collisions(&g.player, g.asteroids) 
 	update_collisions(g.asteroids)
 	update_positions(&g.window_bounds, g.asteroids, rl.GetFrameTime())	
 }
@@ -28,23 +31,20 @@ draw :: proc() {
     rl.BeginDrawing()
     rl.ClearBackground(rl.BLACK)
 	draw_asteroids(g.asteroids)
+	draw_player(&g.player)
     rl.EndDrawing()	
 }
 
 @(export)
 game_init :: proc() {
-	fmt.println("Init")
-	INIT_ASTEROIDS_N :: 100
+	INIT_ASTEROIDS_N :: 50
 
 	g = new(Game_Memory)
 	set_window_bounds(&g.window_bounds)
 	g.asteroids = make_asteroids(INIT_ASTEROIDS_N, &g.window_bounds)
+	g.player = make_player({ f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()) })
 
-	fmt.printfln("Game_Memory: %p", &g)
-	fmt.printfln("Asteroids: %p", &g.asteroids)
-	fmt.printfln("Window Bounds: %p", &g.asteroids)
-
-	fmt.printfln("Window Bounds: %g, %g", &g.asteroids[0], &g.asteroids[1])
+	fmt.printfln("Initialized game with %d asteroids", INIT_ASTEROIDS_N)
 }
 
 @(export) 

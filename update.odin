@@ -7,7 +7,7 @@ Collision :: struct($A, $B: typeid) {
 }
 
 test_collision :: proc(a, b: ^$Entity) -> (coll: Collision(Entity, Entity), ok: bool) {
-	ok = rl.Vector2Distance(a.position, b.position) < a.radius + b.radius
+	ok = rl.Vector2Distance(a.body.position, b.body.position) < a.radius + b.radius
 	if ok do coll = Collision(Entity, Entity){a, b}
 	return
 }
@@ -26,43 +26,31 @@ update_collisions :: proc(ents: []$Entity) {
 }
 
 update_positions :: proc(window_bounds: ^[2]rl.Vector2, ents: []$Entity, dt: f32) {
-	for &e in ents {
-		e.velocity += e.force * dt / e.radius
-		e.position += e.velocity * dt
-		e.position = clamp_vec(e.position, window_bounds[0], window_bounds[1])
-		e.force = {0, 0}
-	}
-}
-
-clamp_val :: proc(v: f32, minimum, maximum: f32) -> f32 {
-	return minimum if v > maximum else maximum if v < minimum else v
-}
-
-clamp_vec :: proc(pos: rl.Vector2, minimum, maximum: rl.Vector2) -> rl.Vector2 {
-	return {
-		clamp_val(pos.x, minimum.x, maximum.x),
-		clamp_val(pos.y, minimum.y, maximum.y),
-	}
+	for &e in ents do update_rigid_body(window_bounds, &e.body, dt)
 }
 
 solve_impulse :: proc(collisions: [dynamic]Collision($Entity, Entity)) {
 	THRESHHOLD :: 1.0
+	RESTITUTION :: 0.5
 	
 	for &c in collisions {
 		// treating center as position
 		// treating mass as proportional to radius
-		normal := rl.Vector2Normalize(c.a.position - c.b.position)
-		rvel := c.a.velocity - c.b.velocity
+		abody : ^Rigid_Body = &c.a.body
+		bbody : ^Rigid_Body = &c.b.body
+		
+		normal := rl.Vector2Normalize(abody.position - bbody.position)
+		rvel := abody.velocity - bbody.velocity
 		speed := rl.Vector2DotProduct(rvel, normal)
 
 		if speed >= 0 do continue
 
-		j := -(1.0 + THRESHHOLD) *speed / (1/c.a.radius + 1/c.b.radius)
+		j := -(RESTITUTION + THRESHHOLD) * speed / (1/abody.mass + 1/bbody.mass)
 		impulse := normal * j
 
 		if rl.Vector2Length(impulse) > THRESHHOLD {
-			c.a.velocity += impulse / c.a.radius
-			c.b.velocity -= impulse / c.b.radius
+			abody.velocity += impulse / abody.mass
+			bbody.velocity -= impulse / abody.mass
 		}
 		
 		// for now no friction

@@ -3,28 +3,21 @@ import "core:math/rand"
 import rl "vendor:raylib"
 
 Asteroid :: struct {
-	position, force, velocity: rl.Vector2,
+	body: Rigid_Body,
 	radius, rotation: f32,
 	sides: i32,
 }
 
-rand_vec2 :: #force_inline proc(upper: rl.Vector2, lower := rl.Vector2{0, 0}) -> rl.Vector2 {
-	return {
-		rand.float32_range(lower.x, upper.x), 
-		rand.float32_range(lower.x, upper.y),
-	}
-}
+// radius and rigid_body hold the same value for now
 
 make_asteroids :: proc(num: int, window_bounds: ^[2]rl.Vector2) -> []Asteroid {
 	asteroids := make([]Asteroid, num)
 	for &ast in asteroids {
+		radius := window_bounds[1].x * 0.025 + window_bounds[1].x *0.01 * rand.float32()
 		ast = Asteroid {
-			position = rand_vec2(window_bounds[1]),
-			force = {0, 0},
-			velocity = rand_vec2(window_bounds[1], -window_bounds[1]) / 10,
-			radius = window_bounds[1].x/50 + window_bounds[1].x/80 * rand.float32(),
-			rotation = 0.0,
+			radius = radius,
 			sides = 6 + rand.int31_max(4),
+			body = make_rigid_body(rl.Vector2{0, 0}, window_bounds[1], radius),
 		}
 	}
 	return asteroids
@@ -32,7 +25,7 @@ make_asteroids :: proc(num: int, window_bounds: ^[2]rl.Vector2) -> []Asteroid {
 
 draw_asteroids :: proc(asteroids: []Asteroid) {
 	for &a in asteroids {
-		rl.DrawPoly(a.position, a.sides, a.radius, a.rotation, rl.GRAY)
+		rl.DrawPoly(a.body.position, a.sides, a.radius, a.rotation, rl.GRAY)
 	}
 }
 
