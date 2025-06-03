@@ -1,4 +1,5 @@
 package asteroid
+import "core:math"
 import "core:math/rand"
 import rl "vendor:raylib"
 
@@ -20,3 +21,6 @@ clamp_vec :: #force_inline proc(pos: rl.Vector2, minimum, maximum: rl.Vector2) -
 	}
 }
 
+extend_point :: proc(origin: rl.Vector2, angle, radius: f32) -> rl.Vector2 {
+	return origin + rl.Vector2Rotate(rl.Vector2{1, 0}, math.to_radians(angle)) * radius
+}

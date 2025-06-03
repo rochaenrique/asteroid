@@ -29,15 +29,15 @@ update :: proc() {
 
 draw :: proc() {
     rl.BeginDrawing()
-    rl.ClearBackground(rl.BLACK)
-	draw_asteroids(g.asteroids)
-	draw_player(&g.player)
+    	rl.ClearBackground(rl.BLACK)
+		draw_asteroids(g.asteroids)
+		draw_player(&g.player)
     rl.EndDrawing()	
 }
 
 @(export)
 game_init :: proc() {
-	INIT_ASTEROIDS_N :: 50
+	INIT_ASTEROIDS_N :: 20
 
 	g = new(Game_Memory)
 	set_window_bounds(&g.window_bounds)
@@ -45,6 +45,7 @@ game_init :: proc() {
 	g.player = make_player({ f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()) })
 
 	fmt.printfln("Initialized game with %d asteroids", INIT_ASTEROIDS_N)
+	fmt.println("Player Shape: ", g.player.shape)
 }
 
 @(export) 
@@ -61,6 +62,9 @@ game_running :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
+	for &a in g.asteroids {
+		delete(a.shape.points)
+	}
 	delete(g.asteroids)
 	free(g)
 }
