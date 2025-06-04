@@ -76,7 +76,7 @@ draw :: proc() {
 
 @(export)
 game_init :: proc() {
-	INIT_ASTEROIDS_N :: 0
+	INIT_ASTEROIDS_N :: 10
 
 	screen := rl.Vector2{ f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())}
 
@@ -92,10 +92,10 @@ game_init :: proc() {
 	g.entities = make([dynamic]Entity, 0, INIT_ASTEROIDS_N + 1)
 
 	center := window_bounds_center(&g.window_bounds)
-	append(&g.entities, make_entity(center, 3, center.x / 10, rl.RED))
+	append(&g.entities, make_entity(center, 3, center.x * 0.03, rl.BLUE))
 	g.player = &g.entities[0]
 	
-	make_entities(&g.entities, INIT_ASTEROIDS_N, &g.window_bounds)
+	make_entities(&g.entities, INIT_ASTEROIDS_N, &g.window_bounds, rl.GRAY)
 
 	fmt.printfln("Initialized game with %d entities", len(g.entities))
 }

@@ -1,6 +1,6 @@
 package asteroid
 import rl "vendor:raylib"
-// import gl "vendor:raylib/rlgl"
+import gl "vendor:raylib/rlgl"
 
 Shape :: struct {
 	points: [dynamic]rl.Vector2,
@@ -40,19 +40,16 @@ draw_shape_debug :: proc(s: ^Shape) {
 }
 
 draw_shape_filled :: proc(s: ^Shape, color: rl.Color) {
-	rl.DrawTriangleFan(raw_data(s.points), i32(len(s.points)), rl.GREEN)
+	if len(s.points) < 3 do return
 	
-	// for i := 1; i < len(s.points) - 1; i += 1 {
-	// 	rl.DrawTriangle(s.points[0], s.points[i], s.points[i+1], rl.RED)
-	// }	
-    // gl.Begin(gl.TRIANGLES)
-    // gl.Color4ub(color.r, color.g, color.b, color.a)
+    gl.Begin(gl.TRIANGLES)
+    gl.Color4ub(color.r, color.g, color.b, color.a)
 
-    // for i := 1; i < len(s.points) - 1; i += 1 {
-    //     gl.Vertex2f(s.points[0].x, s.points[0].y)
-    //     gl.Vertex2f(s.points[i].x, s.points[i].y)
-    //     gl.Vertex2f(s.points[i + 1].x, s.points[i + 1].y)
-    // }
+    for i := 1; i < len(s.points) - 1; i += 1 {
+        gl.Vertex2f(s.points[0].x, s.points[0].y)
+        gl.Vertex2f(s.points[len(s.points) - i].x, s.points[len(s.points) - i].y)
+        gl.Vertex2f(s.points[len(s.points) - i - 1].x, s.points[len(s.points) - i - 1].y)
+    }
 
-    // gl.End()
+    gl.End()	
 }

@@ -9,7 +9,7 @@ Entity :: struct {
 	color: rl.Color,
 }
 
-make_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, c := rl.BLUE) -> Entity {
+make_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, c := rl.GRAY) -> Entity {
 	return {
 		body = make_rigid_body(),
 		shape = make_shape(position, sides, radius, 0),
@@ -17,7 +17,7 @@ make_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, c := rl.
 	}
 }
 
-make_entity_rand :: proc(lower := rl.Vector2(0), upper := rl.Vector2(100), c := rl.BLUE) -> Entity {
+make_entity_rand :: proc(lower := rl.Vector2(0), upper := rl.Vector2(100), c := rl.GRAY) -> Entity {
 	radius := (upper.x - lower.x) * 0.01 * (1.0 + rand.float32())
 	sides := 5 + rand.int_max(4)
 	return {
@@ -32,9 +32,9 @@ make_entity :: proc {
 	make_entity_rand,
 }
 
-make_entities :: proc(entities: ^[dynamic]Entity, num: int, bounds: ^Window_Bounds) {
+make_entities :: proc(entities: ^[dynamic]Entity, num: int, bounds: ^Window_Bounds, color: rl.Color) {
 	for i := 0; i < num; i += 1 {
-		append(entities, make_entity(bounds.lower, bounds.upper))
+		append(entities, make_entity(bounds.lower, bounds.upper, color))
 	}
 }
 
