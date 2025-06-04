@@ -1,51 +1,103 @@
 package asteroid
 import rl "vendor:raylib"
 import "core:fmt"
+import "core:math"
+
+Window_Bounds :: struct {
+	lower, upper: rl.Vector2,
+}
+
+set_window_bounds :: proc(bounds: ^Window_Bounds) {
+	bounds^ = {
+		lower = rl.GetScreenToWorld2D(rl.Vector2(0), g.camera),
+		upper = rl.GetScreenToWorld2D(rl.Vector2{ f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()) }, g.camera),
+	}
+}
+
+window_bounds_rect :: proc(bounds: ^Window_Bounds) -> rl.Rectangle {
+	size := g.window_bounds.upper - g.window_bounds.lower
+	return {
+		x = g.window_bounds.lower.x,
+		y = g.window_bounds.lower.y,
+		width = size.x,
+		height = size.y,
+	}
+}
+
+window_bounds_center :: proc(bounds: ^Window_Bounds) -> rl.Vector2 {
+	return (bounds.lower + bounds.upper) / 2
+}
 
 Game_Memory :: struct {
-	window_bounds: [2]rl.Vector2,
-	asteroids: []Asteroid,
-	player: Player,
+	window_bounds: Window_Bounds,
+	entities: [dynamic]Entity,
+	player: ^Entity,
+	camera: rl.Camera2D,
 }
 
 g: ^Game_Memory
 
-set_window_bounds :: proc(bounds: ^[2]rl.Vector2) {
-	width := f32(rl.GetScreenWidth())
-	height := f32(rl.GetScreenHeight())
-	bounds^ = {
-		rl.Vector2{width * -0.1, height * -0.1}, 
-		rl.Vector2{width * 1.1, height * 1.1}, 
-	}
-}
-
 update :: proc() {
-	if rl.IsWindowResized() do set_window_bounds(&g.window_bounds)
-	update_player(&g.window_bounds, &g.player, rl.GetFrameTime())
-	player_collisions(&g.player, g.asteroids) 
-	update_collisions(g.asteroids)
-	update_positions(&g.window_bounds, g.asteroids, rl.GetFrameTime())	
+	when ODIN_DEBUG {
+        if wheel := rl.GetMouseWheelMove(); wheel != 0 {
+            g.camera.offset = rl.GetMousePosition()
+            g.camera.target = rl.GetScreenToWorld2D(rl.GetMousePosition(), g.camera)
+			
+            g.camera.zoom = rl.Clamp(math.exp(math.ln(g.camera.zoom)+0.2*wheel), 0.125, 64.0)
+        }		
+		
+		if rl.IsMouseButtonDown(.LEFT) {
+            g.camera.target += rl.GetMouseDelta() * -1.0/g.camera.zoom
+		}
+	}
+
+	if rl.IsKeyPressed(.H) || rl.IsWindowResized() do set_window_bounds(&g.window_bounds)
+	update_player(g.player, rl.GetFrameTime())
+	update_entities(g.entities, rl.GetFrameTime(), &g.window_bounds)
 }
 
 draw :: proc() {
     rl.BeginDrawing()
-    	rl.ClearBackground(rl.BLACK)
-		draw_asteroids(g.asteroids)
-		draw_player(&g.player)
-    rl.EndDrawing()	
+    rl.ClearBackground(rl.BLACK)
+	
+	rl.BeginMode2D(g.camera)
+	draw_entities(g.entities)
+	when ODIN_DEBUG {
+		rl.DrawRectangleLinesEx(window_bounds_rect(&g.window_bounds), 2, rl.GREEN)
+	}
+	rl.EndMode2D()
+
+	when ODIN_DEBUG {
+		rl.DrawFPS(10, 10)
+		rl.DrawCircleV(rl.GetMousePosition(), 5, rl.GREEN)
+	}
+    rl.EndDrawing()
 }
 
 @(export)
 game_init :: proc() {
-	INIT_ASTEROIDS_N :: 20
+	INIT_ASTEROIDS_N :: 0
+
+	screen := rl.Vector2{ f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())}
 
 	g = new(Game_Memory)
+	g.camera = rl.Camera2D{
+		offset = screen / 2,
+		target = screen / 2,
+		rotation = 0,
+		zoom = 1,
+	}
+	
 	set_window_bounds(&g.window_bounds)
-	g.asteroids = make_asteroids(INIT_ASTEROIDS_N, &g.window_bounds)
-	g.player = make_player({ f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()) })
+	g.entities = make([dynamic]Entity, 0, INIT_ASTEROIDS_N + 1)
 
-	fmt.printfln("Initialized game with %d asteroids", INIT_ASTEROIDS_N)
-	fmt.println("Player Shape: ", g.player.shape)
+	center := window_bounds_center(&g.window_bounds)
+	append(&g.entities, make_entity(center, 3, center.x / 10, rl.RED))
+	g.player = &g.entities[0]
+	
+	make_entities(&g.entities, INIT_ASTEROIDS_N, &g.window_bounds)
+
+	fmt.printfln("Initialized game with %d entities", len(g.entities))
 }
 
 @(export) 
@@ -62,10 +114,10 @@ game_running :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
-	for &a in g.asteroids {
-		delete(a.shape.points)
+	for &e in &g.entities {
+		delete(e.shape.points)
 	}
-	delete(g.asteroids)
+	delete(g.entities)
 	free(g)
 }
 
@@ -88,7 +140,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 game_window_init :: proc() {
 	rl.SetConfigFlags({ .WINDOW_RESIZABLE })
 	rl.InitWindow(800, 600, "Asteroid")
-	rl.SetTargetFPS(60)
+	rl.SetTargetFPS(30)
 }
 
 @(export)

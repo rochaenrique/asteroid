@@ -1,0 +1,59 @@
+package asteroid
+
+import rl "vendor:raylib"
+import "core:math/rand"
+
+Entity :: struct {
+	body: Rigid_Body,
+	shape: Shape,
+	color: rl.Color,
+}
+
+make_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, c := rl.BLUE) -> Entity {
+	return {
+		body = make_rigid_body(),
+		shape = make_shape(position, sides, radius, 0),
+		color = c,
+	}
+}
+
+make_entity_rand :: proc(lower := rl.Vector2(0), upper := rl.Vector2(100), c := rl.BLUE) -> Entity {
+	radius := (upper.x - lower.x) * 0.01 * (1.0 + rand.float32())
+	sides := 5 + rand.int_max(4)
+	return {
+		body = make_rigid_body(lower, upper, radius),
+		shape = make_shape(rand_vec2(lower, upper), sides, radius, 0),
+		color = c,
+	}
+}
+
+make_entity :: proc {
+	make_entity_poly,
+	make_entity_rand,
+}
+
+make_entities :: proc(entities: ^[dynamic]Entity, num: int, bounds: ^Window_Bounds) {
+	for i := 0; i < num; i += 1 {
+		append(entities, make_entity(bounds.lower, bounds.upper))
+	}
+}
+
+draw_entity :: proc(e: ^Entity) {
+	when ODIN_DEBUG do draw_shape_debug(&e.shape)
+	draw_shape_filled(&e.shape, e.color)
+}
+
+draw_entities :: proc(entities: [dynamic]Entity) {
+	for &e in entities do draw_entity(&e)
+}
+
+update_entity :: proc(e: ^Entity, dt: f32, bounds: ^Window_Bounds) {
+	resolve_rigid_body(&e.body, dt)
+	translate_shape(&e.shape, e.body.velocity * dt, bounds.lower, bounds.upper)
+}
+
+update_entities :: proc(entities: [dynamic]Entity, dt: f32, bounds: ^Window_Bounds) { 
+	for &e in entities {
+		update_entity(&e, dt, bounds)
+	}
+}

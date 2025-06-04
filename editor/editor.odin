@@ -113,7 +113,8 @@ main :: proc() {
 
 	old_games := make([dynamic]Game, default_allocator)
 
-	fmt.printfln("Starting game version %d", game_version)
+	fmt.println("Starting game version", game_version)
+	
 	for game.running() {
 		game.update()
 		
