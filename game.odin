@@ -7,10 +7,13 @@ Window_Bounds :: struct {
 	lower, upper: rl.Vector2,
 }
 
-set_window_bounds :: proc(bounds: ^Window_Bounds) {
+WINDOW_BOUNDS_OFFSET : f32 : 0.1
+
+set_window_bounds :: proc(bounds: ^Window_Bounds, offset := WINDOW_BOUNDS_OFFSET) {
+	screen_world := rl.GetScreenToWorld2D(rl.Vector2{ f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()) }, g.camera)
 	bounds^ = {
-		lower = rl.GetScreenToWorld2D(rl.Vector2(0), g.camera),
-		upper = rl.GetScreenToWorld2D(rl.Vector2{ f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()) }, g.camera),
+		lower = rl.GetScreenToWorld2D(rl.Vector2(0), g.camera) - screen_world * offset,
+		upper = screen_world * (1.0 + offset),
 	}
 }
 
@@ -36,13 +39,11 @@ Game_Memory :: struct {
 }
 
 g: ^Game_Memory
-
 update :: proc() {
 	when ODIN_DEBUG {
         if wheel := rl.GetMouseWheelMove(); wheel != 0 {
             g.camera.offset = rl.GetMousePosition()
             g.camera.target = rl.GetScreenToWorld2D(rl.GetMousePosition(), g.camera)
-			
             g.camera.zoom = rl.Clamp(math.exp(math.ln(g.camera.zoom)+0.2*wheel), 0.125, 64.0)
         }		
 		
@@ -52,6 +53,7 @@ update :: proc() {
 	}
 
 	if rl.IsKeyPressed(.H) || rl.IsWindowResized() do set_window_bounds(&g.window_bounds)
+	
 	update_player(g.player, rl.GetFrameTime())
 	update_entities(g.entities, rl.GetFrameTime(), &g.window_bounds)
 }
@@ -63,7 +65,7 @@ draw :: proc() {
 	rl.BeginMode2D(g.camera)
 	draw_entities(g.entities)
 	when ODIN_DEBUG {
-		rl.DrawRectangleLinesEx(window_bounds_rect(&g.window_bounds), 2, rl.GREEN)
+		rl.DrawRectangleLinesEx(window_bounds_rect(&g.window_bounds), 2, rl.RED)
 	}
 	rl.EndMode2D()
 
@@ -77,24 +79,23 @@ draw :: proc() {
 @(export)
 game_init :: proc() {
 	INIT_ASTEROIDS_N :: 10
-
-	screen := rl.Vector2{ f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight())}
-
+	
 	g = new(Game_Memory)
+	
+	screen := rl.Vector2{ f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()) }
 	g.camera = rl.Camera2D{
 		offset = screen / 2,
 		target = screen / 2,
 		rotation = 0,
 		zoom = 1,
 	}
-	
 	set_window_bounds(&g.window_bounds)
 	g.entities = make([dynamic]Entity, 0, INIT_ASTEROIDS_N + 1)
 
 	center := window_bounds_center(&g.window_bounds)
 	append(&g.entities, make_entity(center, 3, center.x * 0.03, rl.BLUE))
 	g.player = &g.entities[0]
-	
+
 	make_entities(&g.entities, INIT_ASTEROIDS_N, &g.window_bounds, rl.GRAY)
 
 	fmt.printfln("Initialized game with %d entities", len(g.entities))

@@ -1,5 +1,6 @@
 package asteroid
 import rl "vendor:raylib"
+import "core:math/rand"
 
 Rigid_Body :: struct {
 	velocity, force: rl.Vector2,
@@ -14,25 +15,24 @@ make_rigid_body_full :: proc(velocity := rl.Vector2(0), force := rl.Vector2(0), 
 	}
 }
 
-make_rigid_body_position :: proc(v: rl.Vector2) -> Rigid_Body {
+make_rigid_body_velocity :: proc(v: rl.Vector2) -> Rigid_Body {
 	return make_rigid_body_full(velocity=v)
 }
 
 make_rigid_body_rand :: proc(lower := rl.Vector2(0), upper := rl.Vector2(100)) -> Rigid_Body {
-	v := 0.1 * rand_vec2(-upper, upper)
-	return make_rigid_body_full(velocity=v)
+	velocity := 0.1 * rand_vec2(lower, upper) 
+	mass := (upper.x - lower.x) * 0.05 * (rand.float32())
+	return make_rigid_body_full(velocity=velocity, mass=mass)
 }
 
 make_rigid_body :: proc {
-	make_rigid_body_full,
-	make_rigid_body_position,
+	make_rigid_body_velocity,
 	make_rigid_body_rand,
+	make_rigid_body_full,
 }
 
 resolve_rigid_body :: proc(rb: ^Rigid_Body, dt: f32) {
 	rb.velocity += rb.force * dt / rb.mass
 	rb.force = rl.Vector2(0)
 }
-
-
 

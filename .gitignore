@@ -1,4 +1,4 @@
 asteroid
 build/
-*.a
+*\.a
 *.dSYM

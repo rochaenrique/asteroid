@@ -17,12 +17,12 @@ make_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, c := rl.
 	}
 }
 
-make_entity_rand :: proc(lower := rl.Vector2(0), upper := rl.Vector2(100), c := rl.GRAY) -> Entity {
-	radius := (upper.x - lower.x) * 0.01 * (1.0 + rand.float32())
-	sides := 5 + rand.int_max(4)
+make_entity_rand :: proc(lower, upper: rl.Vector2, c := rl.GRAY) -> Entity {
+	sides := 5+rand.int_max(9)
+	body := make_rigid_body_rand(lower, upper)
 	return {
-		body = make_rigid_body(lower, upper, radius),
-		shape = make_shape(rand_vec2(lower, upper), sides, radius, 0),
+		body = body,
+		shape = make_shape(rand_vec2(lower, upper), sides, body.mass, 0),
 		color = c,
 	}
 }
