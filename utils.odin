@@ -29,3 +29,8 @@ in_bounds :: proc(pos: rl.Vector2, minimum, maximum: rl.Vector2) -> bool {
 	return pos.x < minimum.x || pos.x > maximum.x ||
 		pos.y < minimum.y || pos.y > maximum.y		
 }
+
+perpendicular :: proc(v: rl.Vector2) -> rl.Vector2 {
+	return { -v.y, v.x }
+}
+

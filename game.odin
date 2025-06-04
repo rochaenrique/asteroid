@@ -78,7 +78,7 @@ draw :: proc() {
 
 @(export)
 game_init :: proc() {
-	INIT_ASTEROIDS_N :: 10
+	INIT_ASTEROIDS_N :: 20
 	
 	g = new(Game_Memory)
 	

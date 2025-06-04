@@ -23,7 +23,7 @@ mean_shape :: proc(shape: ^Shape) -> (m := rl.Vector2(0)) {
 	return m / f32(len(shape.points))
 }
 
-translate_shape :: proc(shape: ^Shape, translation: rl.Vector2, lower := rl.Vector2(0), upper := rl.Vector2(0)) {
+translate_shape :: proc(shape: ^Shape, translation: rl.Vector2, lower := rl.Vector2(-9999), upper := rl.Vector2(9999)) {
 	mean := mean_shape(shape)
 	movement := clamp_vec(mean + translation, lower, upper) - mean
 	for &p in shape.points {
@@ -52,3 +52,35 @@ draw_shape_filled :: proc(s: ^Shape, color: rl.Color) {
 
     gl.End()	
 }
+
+project_shape_to_axis :: proc(s: ^Shape, axis: rl.Vector2) -> (min: f32, max: f32) {
+	min = rl.Vector2DotProduct(s.points[0], axis)
+    max = min
+
+    for i := 1; i < len(s.points); i += 1 {
+        proj := rl.Vector2DotProduct(s.points[i], axis)
+        if proj < min do min = proj
+        else if proj > max do max = proj
+    }
+	return
+}
+
+shapes_overlap_axis :: proc(a, b: ^Shape, axis: rl.Vector2) -> (bool, f32) {
+	a_min, a_max := project_shape_to_axis(a, axis)
+	b_min, b_max := project_shape_to_axis(b, axis)
+	
+	if a_max < b_min || b_max < a_min do return false, 0
+
+	return true, min(a_max, b_max) - max(a_min, b_min)
+}
+
+shape_normals :: proc(s: ^Shape) -> [dynamic]rl.Vector2 {
+	normals := make([dynamic]rl.Vector2, 0, len(s.points), context.temp_allocator)
+	for point, i in s.points {
+        next := s.points[(i + 1) % len(s.points)]
+        inject_at(&normals, i, rl.Vector2Normalize(perpendicular(next - point)))
+     }
+	
+	return normals
+}
+

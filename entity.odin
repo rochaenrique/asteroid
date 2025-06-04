@@ -52,7 +52,8 @@ update_entity :: proc(e: ^Entity, dt: f32, bounds: ^Window_Bounds) {
 	translate_shape(&e.shape, e.body.velocity * dt, bounds.lower, bounds.upper)
 }
 
-update_entities :: proc(entities: [dynamic]Entity, dt: f32, bounds: ^Window_Bounds) { 
+update_entities :: proc(entities: [dynamic]Entity, dt: f32, bounds: ^Window_Bounds) {
+	update_collisions(entities)
 	for &e in entities {
 		update_entity(&e, dt, bounds)
 	}

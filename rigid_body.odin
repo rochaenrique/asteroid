@@ -20,8 +20,8 @@ make_rigid_body_velocity :: proc(v: rl.Vector2) -> Rigid_Body {
 }
 
 make_rigid_body_rand :: proc(lower := rl.Vector2(0), upper := rl.Vector2(100)) -> Rigid_Body {
-	velocity := 0.1 * rand_vec2(lower, upper) 
-	mass := (upper.x - lower.x) * 0.05 * (rand.float32())
+	velocity := 0.15 * rand_vec2(lower, upper) 
+	mass := (upper.x - lower.x) * 0.03 * (1.0 + rand.float32())
 	return make_rigid_body_full(velocity=velocity, mass=mass)
 }
 
