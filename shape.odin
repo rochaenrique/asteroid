@@ -18,6 +18,10 @@ make_shape :: proc {
 	make_shape_from_poly,
 }
 
+delete_shape :: proc(shape: ^Shape) {
+	delete(shape.points)
+}
+
 mean_shape :: proc(shape: ^Shape) -> (m := rl.Vector2(0)) {
 	for &p in shape.points do m += p
 	return m / f32(len(shape.points))

@@ -32,6 +32,10 @@ make_entity :: proc {
 	make_entity_rand,
 }
 
+delete_entity :: proc(e: ^Entity) {
+	delete_shape(&e.shape)
+}
+
 make_entities :: proc(entities: ^[dynamic]Entity, num: int, bounds: ^Window_Bounds, color: rl.Color) {
 	for i := 0; i < num; i += 1 {
 		append(entities, make_entity(bounds.lower, bounds.upper, color))

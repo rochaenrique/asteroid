@@ -2,6 +2,7 @@ package asteroid
 import rl "vendor:raylib"
 import "core:fmt"
 import "core:math"
+import ease "core:math/ease"
 
 Window_Bounds :: struct {
 	lower, upper: rl.Vector2,
@@ -36,30 +37,39 @@ Game_Memory :: struct {
 	entities: [dynamic]Entity,
 	player: ^Entity,
 	camera: rl.Camera2D,
+	anims: ease.Flux_Map(f32),
 }
 
 g: ^Game_Memory
-update :: proc() {
-	when ODIN_DEBUG {
+
+debug_camera_update :: proc(camera: ^rl.Camera2D) {
         if wheel := rl.GetMouseWheelMove(); wheel != 0 {
-            g.camera.offset = rl.GetMousePosition()
-            g.camera.target = rl.GetScreenToWorld2D(rl.GetMousePosition(), g.camera)
-            g.camera.zoom = rl.Clamp(math.exp(math.ln(g.camera.zoom)+0.2*wheel), 0.125, 64.0)
+            camera.offset = rl.GetMousePosition()
+            camera.target = rl.GetScreenToWorld2D(rl.GetMousePosition(), camera^)
+            camera.zoom = rl.Clamp(math.exp(math.ln(camera.zoom)+0.2*wheel), 0.125, 64.0)
         }		
 		
 		if rl.IsMouseButtonDown(.LEFT) {
-            g.camera.target += rl.GetMouseDelta() * -1.0/g.camera.zoom
+            camera.target += rl.GetMouseDelta() * -1.0/camera.zoom
 		}
-	}
+}
 
+update :: proc() {
+	when ODIN_DEBUG {
+		debug_camera_update(&g.camera)
+	}
+	
+	dt := rl.GetFrameTime()
 	if rl.IsKeyPressed(.H) || rl.IsWindowResized() do set_window_bounds(&g.window_bounds)
 	
-	update_player(g.player, rl.GetFrameTime())
-	update_entities(g.entities, rl.GetFrameTime(), &g.window_bounds)
+	update_player(g.player, dt)
+	update_entities(g.entities, dt, &g.window_bounds)
+	ease.flux_update(&g.anims, f64(dt))
 }
 
 draw :: proc() {
     rl.BeginDrawing()
+	rl.DrawFPS(10, 10)
     rl.ClearBackground(rl.BLACK)
 	
 	rl.BeginMode2D(g.camera)
@@ -67,18 +77,14 @@ draw :: proc() {
 	when ODIN_DEBUG {
 		rl.DrawRectangleLinesEx(window_bounds_rect(&g.window_bounds), 2, rl.RED)
 	}
+	
 	rl.EndMode2D()
-
-	when ODIN_DEBUG {
-		rl.DrawFPS(10, 10)
-		rl.DrawCircleV(rl.GetMousePosition(), 5, rl.GREEN)
-	}
     rl.EndDrawing()
 }
 
 @(export)
 game_init :: proc() {
-	INIT_ASTEROIDS_N :: 20
+	INIT_ASTEROIDS_N :: 1
 	
 	g = new(Game_Memory)
 	
@@ -98,6 +104,8 @@ game_init :: proc() {
 
 	make_entities(&g.entities, INIT_ASTEROIDS_N, &g.window_bounds, rl.GRAY)
 
+	// animations test
+	g.anims = ease.flux_init(f32)
 	fmt.printfln("Initialized game with %d entities", len(g.entities))
 }
 
@@ -116,9 +124,14 @@ game_running :: proc() -> bool {
 @(export)
 game_shutdown :: proc() {
 	for &e in &g.entities {
-		delete(e.shape.points)
+		delete_entity(&e)
 	}
 	delete(g.entities)
+	
+	for _, &tween in &g.anims.values {
+		tween.on_complete(&g.anims, tween.data)
+	}
+	ease.flux_destroy(g.anims)
 	free(g)
 }
 
