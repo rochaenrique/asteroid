@@ -10,12 +10,6 @@ import "core:mem"
 import "core:path/filepath"
 import "core:log"
 
-when ODIN_OS == .Darwin {
-	DLL_EXT :: ".dylib"
-} else {
-	DLL_EXT :: ".so"
-}
-
 GAME_DLL_DIR :: "build"
 GAME_DLL_PATH :: GAME_DLL_DIR + "/game" + DLL_EXT
 

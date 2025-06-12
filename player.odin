@@ -30,7 +30,10 @@ update_player_rotate :: proc(p: ^Entity, dt: f32) {
 	// update body and shape
 }
 
-update_player :: proc(p: ^Entity, dt: f32) {
+update_player :: proc(id: EntityId, dt: f32) {
+	p := game_get_entity(id)
+	if p == nil do return
+	
 	UP	  :: rl.Vector2{ 0, -1}
 	DOWN  :: rl.Vector2{ 0,  1}
 	RIGHT :: rl.Vector2{ 1,  0}

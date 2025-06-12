@@ -3,6 +3,8 @@ package asteroid
 import rl "vendor:raylib"
 import "core:math/rand"
 
+EntityId :: distinct int
+
 Entity :: struct {
 	body: Rigid_Body,
 	shape: Shape,
@@ -39,12 +41,6 @@ delete_entity :: proc(e: ^Entity) {
 	delete_shape(&e.shape)
 }
 
-make_entities :: proc(entities: ^[dynamic]Entity, num: int, bounds: ^Window_Bounds) {
-	for i := 0; i < num; i += 1 {
-		append(entities, make_entity(bounds.lower, bounds.upper))
-	}
-}
-
 draw_entity :: proc(e: ^Entity) {
 	// when ODIN_DEBUG do draw_shape_debug(&e.shape)
 	draw_shape_filled(&e.shape, e.color)
@@ -62,8 +58,8 @@ update_entity :: proc(e: ^Entity, dt: f32, bounds: ^Window_Bounds) {
 }
 
 update_entities :: proc(entities: [dynamic]Entity, dt: f32, bounds: ^Window_Bounds) {
-	update_collisions(entities)
 	for &e in entities {
 		update_entity(&e, dt, bounds)
 	}
+	update_collisions(entities)
 }

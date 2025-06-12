@@ -1,6 +1,5 @@
 package asteroid
 import rl "vendor:raylib"
-import "core:fmt"
 import "core:math"
 import ease "core:math/ease"
 
@@ -28,29 +27,41 @@ window_bounds_rect :: proc(bounds: ^Window_Bounds) -> rl.Rectangle {
 	}
 }
 
-window_bounds_center :: proc(bounds: ^Window_Bounds) -> rl.Vector2 {
-	return (bounds.lower + bounds.upper) / 2
-}
-
 Game_Memory :: struct {
 	window_bounds: Window_Bounds,
-	entities: [dynamic]Entity,
-	player: ^Entity,
 	camera: rl.Camera2D,
+
+	player: EntityId,
+	entities: [dynamic]Entity,
+	alive_entities: [dynamic]bool,
+	entities_to_destroy: [dynamic]EntityId,
+	
 	anims: ease.Flux_Map(f32),
-	entities_to_destroy: [dynamic]^Entity,
 }
 
 g: ^Game_Memory
 
-game_create_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, static: bool, color: rl.Color) -> ^Entity {
-	append(&g.entities, make_entity(position, sides, radius, static, color))
-	return &g.entities[len(g.entities) - 1]
+get_window_center :: proc() -> rl.Vector2 {
+	return (g.window_bounds.lower + g.window_bounds.upper) / 2
 }
 
-game_create_entity_windowed :: proc() -> ^Entity {
-	append(&g.entities, make_entity(g.window_bounds.lower, g.window_bounds.upper))
-	return &g.entities[len(g.entities) - 1]
+game_get_entity :: proc(id: EntityId) -> ^Entity {
+	if cast(int)id < len(g.entities) && g.alive_entities[id] do return &g.entities[id]
+	return nil
+}
+
+game_add_entity :: proc(entity: Entity) -> EntityId {
+	append(&g.entities, entity)
+	append(&g.alive_entities, true)
+	return EntityId(len(g.entities) - 1)
+}
+
+game_create_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, static: bool, color: rl.Color) -> EntityId {
+	return game_add_entity(make_entity_poly(position, sides, radius, static, color))
+}
+
+game_create_entity_windowed :: proc() -> EntityId {
+	return game_add_entity(make_entity(g.window_bounds.lower, g.window_bounds.upper))
 }
 
 game_create_entity :: proc{
@@ -58,31 +69,31 @@ game_create_entity :: proc{
 	game_create_entity_poly,
 }
 
-game_destroy_entity :: proc(entity: ^Entity) {
+game_destroy_entity :: proc(entity: EntityId) {
 	append(&g.entities_to_destroy, entity)
 }
 
 destroy_entities :: proc() {
-	for &e in g.entities_to_destroy {
-		index, ok := index_at(&g.entities, e)
-		if ok {
-			unordered_remove(&g.entities, index)
-			delete_entity(e)
+	for &index in g.entities_to_destroy {
+		if e := game_get_entity(index); e != nil {
+			delete_entity(&g.entities[index])
+			g.alive_entities[index] = false
 		}
 	}
+
 	clear(&g.entities_to_destroy)
 }
 
 debug_camera_update :: proc(camera: ^rl.Camera2D) {
-        if wheel := rl.GetMouseWheelMove(); wheel != 0 {
-            camera.offset = rl.GetMousePosition()
-            camera.target = rl.GetScreenToWorld2D(rl.GetMousePosition(), camera^)
-            camera.zoom = rl.Clamp(math.exp(math.ln(camera.zoom)+0.2*wheel), 0.125, 64.0)
-        }		
-		
-		if rl.IsMouseButtonDown(.LEFT) {
-            camera.target += rl.GetMouseDelta() * -1.0/camera.zoom
-		}
+    if wheel := rl.GetMouseWheelMove(); wheel != 0 {
+        camera.offset = rl.GetMousePosition()
+        camera.target = rl.GetScreenToWorld2D(rl.GetMousePosition(), camera^)
+        camera.zoom = rl.Clamp(math.exp(math.ln(camera.zoom)+0.2*wheel), 0.125, 64.0)
+    }		
+	
+	if rl.IsMouseButtonDown(.LEFT) {
+        camera.target += rl.GetMouseDelta() * -1.0/camera.zoom
+	}
 }
 
 update :: proc() {
@@ -92,11 +103,10 @@ update :: proc() {
 	
 	dt := rl.GetFrameTime()
 	if rl.IsKeyPressed(.H) || rl.IsWindowResized() do set_window_bounds(&g.window_bounds)
-	
+
 	update_player(g.player, dt)
 	update_entities(g.entities, dt, &g.window_bounds)
 	ease.flux_update(&g.anims, f64(dt))
-	if len(g.entities_to_destroy) > 0 do destroy_entities()
 }
 
 draw :: proc() {
@@ -116,7 +126,7 @@ draw :: proc() {
 
 @(export)
 game_init :: proc() {
-	INIT_ASTEROIDS_N :: 1
+	INIT_ASTEROIDS_N :: 5
 	
 	g = new(Game_Memory)
 	
@@ -128,17 +138,19 @@ game_init :: proc() {
 		zoom = 1,
 	}
 	set_window_bounds(&g.window_bounds)
-	g.entities = make([dynamic]Entity, 0, INIT_ASTEROIDS_N + 1)
 
-	center := window_bounds_center(&g.window_bounds)
-	append(&g.entities, make_entity(center, 3, center.x * 0.03, false, rl.BLUE))
-	g.player = &g.entities[0]
+	
+	g.entities = make([dynamic]Entity, 0, INIT_ASTEROIDS_N)
+	g.alive_entities = make([dynamic]bool, 0, INIT_ASTEROIDS_N)
+	g.entities_to_destroy = make([dynamic]EntityId)
+	for i := 0; i < INIT_ASTEROIDS_N; i += 1 {
+		game_create_entity()
+	}
+	
+	center := get_window_center()
+	g.player = game_create_entity(center, 3, center.x * 0.03, false, rl.BLUE)
 
-	make_entities(&g.entities, INIT_ASTEROIDS_N, &g.window_bounds)
-
-	// animations test
 	g.anims = ease.flux_init(f32)
-	fmt.printfln("Initialized game with %d entities", len(g.entities))
 }
 
 @(export) 
@@ -146,6 +158,7 @@ game_update :: proc() {
 	update()
 	draw()
 	free_all(context.temp_allocator)
+	if len(g.entities_to_destroy) > 0 do destroy_entities()
 }
 
 @(export)
@@ -155,16 +168,19 @@ game_running :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
-	for &e in &g.entities {
-		delete_entity(&e)
-	}
-	delete(g.entities)
-	delete(g.entities_to_destroy)
-	
 	for _, &tween in &g.anims.values {
 		tween.on_complete(&g.anims, tween.data)
 	}
 	ease.flux_destroy(g.anims)
+	
+	for alive, index in &g.alive_entities {
+		if alive && index <= len(g.entities) do delete_entity(&g.entities[index])
+	}
+	
+	delete(g.entities)
+	delete(g.alive_entities)
+	delete(g.entities_to_destroy)
+
 	free(g)
 }
 

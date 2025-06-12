@@ -3,24 +3,23 @@ package asteroid
 import ease "core:math/ease"
 import rl "vendor:raylib"
 import "core:time"
-import "core:fmt"
 
-Anim_Data :: struct($T: typeid) {
-	ptr: ^T,
+Entity_Anim_Data :: struct {
+	entity: EntityId,
 	value: ^f32,
 }
 
-make_anim_data :: proc(ptr: ^$T, value := f32(0)) -> ^Anim_Data(T) {
-	data := new(Anim_Data(T))
+make_anim_data :: proc(entity: EntityId, value := f32(0)) -> ^Entity_Anim_Data {
+	data := new(Entity_Anim_Data)
 	data^ = {
-		ptr = ptr,
+		entity = entity,
 		value = new(f32),
 	}
 	data.value^ = value
 	return data
 }
 
-destroy_anim_data :: proc(data: ^Anim_Data($T)) {
+destroy_anim_data :: proc(data: ^Entity_Anim_Data) {
 	free(data.value)
 	free(data)
 }
@@ -29,7 +28,7 @@ destroy_anim_data :: proc(data: ^Anim_Data($T)) {
 // Entity Death Animation
 // ---------------------------------------------------------------------------
 
-animate_entity_death :: proc(e: ^Entity) {
+animate_entity_death :: proc(e: EntityId) {
 	// red fade -> destroy
 	anim_data := make_anim_data(e)
 	duration := 1 * time.Second
@@ -44,18 +43,20 @@ animate_entity_death :: proc(e: ^Entity) {
 }
 
 entity_anim_color_on_start :: proc(flux: ^ease.Flux_Map(f32), data: rawptr) {
-	anim_data := cast(^Anim_Data(Entity))data
-	anim_data.ptr.color = rl.RED
+	anim_data := cast(^Entity_Anim_Data)data
+	e := game_get_entity(anim_data.entity)
+	if e != nil do e.color = rl.RED
 }
 
 entity_anim_color_on_update :: proc(flux: ^ease.Flux_Map(f32), data: rawptr) {
-	anim_data := cast(^Anim_Data(Entity))data
+	anim_data := cast(^Entity_Anim_Data)data
 	tween := &flux.values[anim_data.value]
-	anim_data.ptr.color = rl.ColorLerp(rl.RED, rl.GRAY, f32(tween.progress))
+	e := game_get_entity(anim_data.entity)
+	if e != nil do e.color = rl.ColorLerp(rl.RED, rl.GRAY, f32(tween.progress))
 }
 
 entity_anim_color_on_complete :: proc(flux: ^ease.Flux_Map(f32), data: rawptr) {
-	anim_data := cast(^Anim_Data(Entity))data
+	anim_data := cast(^Entity_Anim_Data)data
 	destroy_anim_data(anim_data)
 }
 
@@ -70,10 +71,7 @@ animate_point :: proc(position: rl.Vector2, ms : i64 = 1000) {
 	anim_data := make_anim_data(entity)
 	duration := time.Millisecond * cast(time.Duration)ms 
 
-	fmt.printfln("Collided! Drawing at point: %g", position)
-	
 	tween := ease.flux_to(&g.anims, anim_data.value, 10, .Exponential_Out, duration)
-	
 	tween.data = anim_data
 	tween.on_complete = point_anim_on_complete
 	
@@ -81,8 +79,8 @@ animate_point :: proc(position: rl.Vector2, ms : i64 = 1000) {
 }
 
 point_anim_on_complete :: proc(flux: ^ease.Flux_Map(f32), data: rawptr) {
-	anim_data := cast(^Anim_Data(Entity))data
-	game_destroy_entity(anim_data.ptr)
+	anim_data := cast(^Entity_Anim_Data)data
+	game_destroy_entity(anim_data.entity)
 	destroy_anim_data(anim_data)
 }
 

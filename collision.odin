@@ -1,7 +1,6 @@
 package asteroid
 import rl "vendor:raylib"
 import "core:math"
-import "core:fmt"
 
 Collision :: struct {
 	a: ^Entity,
@@ -11,10 +10,9 @@ Collision :: struct {
 
 draw_collisions :: proc(collisions: [dynamic]Collision) {
 	for &c in collisions {
-		animate_entity_death(c.a)
-		animate_entity_death(c.b)
+		// animate_entity_death(c.a)
+		// animate_entity_death(c.b)
 		if p, ok := collision_point(&c); ok {
-			fmt.printfln("Collision point: %g", p)
 			animate_point(p)
 		}
 	}

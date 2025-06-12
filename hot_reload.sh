@@ -1,6 +1,6 @@
 OUT_DIR="build"
 ROOT=$(odin root)
-EXE=hot_reload_game.a
+EXE=hot_reload_game
 mkdir -p $OUT_DIR
 
 case $(uname) in
