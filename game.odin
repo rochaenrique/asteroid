@@ -38,9 +38,40 @@ Game_Memory :: struct {
 	player: ^Entity,
 	camera: rl.Camera2D,
 	anims: ease.Flux_Map(f32),
+	entities_to_destroy: [dynamic]^Entity,
 }
 
 g: ^Game_Memory
+
+game_create_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, static: bool, color: rl.Color) -> ^Entity {
+	append(&g.entities, make_entity(position, sides, radius, static, color))
+	return &g.entities[len(g.entities) - 1]
+}
+
+game_create_entity_windowed :: proc() -> ^Entity {
+	append(&g.entities, make_entity(g.window_bounds.lower, g.window_bounds.upper))
+	return &g.entities[len(g.entities) - 1]
+}
+
+game_create_entity :: proc{
+	game_create_entity_windowed,
+	game_create_entity_poly,
+}
+
+game_destroy_entity :: proc(entity: ^Entity) {
+	append(&g.entities_to_destroy, entity)
+}
+
+destroy_entities :: proc() {
+	for &e in g.entities_to_destroy {
+		index, ok := index_at(&g.entities, e)
+		if ok {
+			unordered_remove(&g.entities, index)
+			delete_entity(e)
+		}
+	}
+	clear(&g.entities_to_destroy)
+}
 
 debug_camera_update :: proc(camera: ^rl.Camera2D) {
         if wheel := rl.GetMouseWheelMove(); wheel != 0 {
@@ -65,6 +96,7 @@ update :: proc() {
 	update_player(g.player, dt)
 	update_entities(g.entities, dt, &g.window_bounds)
 	ease.flux_update(&g.anims, f64(dt))
+	if len(g.entities_to_destroy) > 0 do destroy_entities()
 }
 
 draw :: proc() {
@@ -99,10 +131,10 @@ game_init :: proc() {
 	g.entities = make([dynamic]Entity, 0, INIT_ASTEROIDS_N + 1)
 
 	center := window_bounds_center(&g.window_bounds)
-	append(&g.entities, make_entity(center, 3, center.x * 0.03, rl.BLUE))
+	append(&g.entities, make_entity(center, 3, center.x * 0.03, false, rl.BLUE))
 	g.player = &g.entities[0]
 
-	make_entities(&g.entities, INIT_ASTEROIDS_N, &g.window_bounds, rl.GRAY)
+	make_entities(&g.entities, INIT_ASTEROIDS_N, &g.window_bounds)
 
 	// animations test
 	g.anims = ease.flux_init(f32)
@@ -127,6 +159,7 @@ game_shutdown :: proc() {
 		delete_entity(&e)
 	}
 	delete(g.entities)
+	delete(g.entities_to_destroy)
 	
 	for _, &tween in &g.anims.values {
 		tween.on_complete(&g.anims, tween.data)

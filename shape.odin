@@ -22,13 +22,13 @@ delete_shape :: proc(shape: ^Shape) {
 	delete(shape.points)
 }
 
-mean_shape :: proc(shape: ^Shape) -> (m := rl.Vector2(0)) {
+shape_mean :: proc(shape: ^Shape) -> (m := rl.Vector2(0)) {
 	for &p in shape.points do m += p
 	return m / f32(len(shape.points))
 }
 
 translate_shape :: proc(shape: ^Shape, translation: rl.Vector2, lower := rl.Vector2(-9999), upper := rl.Vector2(9999)) {
-	mean := mean_shape(shape)
+	mean := shape_mean(shape)
 	movement := clamp_vec(mean + translation, lower, upper) - mean
 	for &p in shape.points {
 		p += movement
@@ -39,7 +39,7 @@ draw_shape_debug :: proc(s: ^Shape) {
 	rl.DrawSplineLinear(raw_data(s.points), i32(len(s.points)), 2.0, rl.GREEN)
 	rl.DrawLineEx(s.points[0], s.points[len(s.points) - 1], 2.0, rl.GREEN)
 	
-	rl.DrawCircleV(mean_shape(s), 2.0, rl.GREEN)
+	rl.DrawCircleV(shape_mean(s), 2.0, rl.GREEN)
 }
 
 draw_shape_filled :: proc(s: ^Shape, color: rl.Color) {
@@ -88,3 +88,11 @@ shape_normals :: proc(s: ^Shape) -> [dynamic]rl.Vector2 {
 	return normals
 }
 
+shape_radius :: proc(shape: ^Shape, center := rl.Vector2(0)) -> f32 {
+	center := center
+	if center == rl.Vector2(0) do center = shape_mean(shape)
+
+	distance := f32(0)
+	for &p in shape.points do distance += rl.Vector2Length(center - p)
+	return distance / f32(len(shape.points))
+}

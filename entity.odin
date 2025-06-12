@@ -7,23 +7,26 @@ Entity :: struct {
 	body: Rigid_Body,
 	shape: Shape,
 	color: rl.Color,
+	static: bool,
 }
 
-make_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, c := rl.GRAY) -> Entity {
+make_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, static := false, color := rl.GRAY) -> Entity {
 	return {
 		body = make_rigid_body(),
 		shape = make_shape(position, sides, radius, 0),
-		color = c,
+		static = static,
+		color = color,
 	}
 }
 
-make_entity_rand :: proc(lower, upper: rl.Vector2, c := rl.GRAY) -> Entity {
+make_entity_rand :: proc(lower, upper: rl.Vector2, static := false, color := rl.GRAY) -> Entity {
 	sides := 5+rand.int_max(9)
 	body := make_rigid_body_rand(lower, upper)
 	return {
 		body = body,
 		shape = make_shape(rand_vec2(lower, upper), sides, body.mass, 0),
-		color = c,
+		static = static,
+		color = color,
 	}
 }
 
@@ -36,14 +39,14 @@ delete_entity :: proc(e: ^Entity) {
 	delete_shape(&e.shape)
 }
 
-make_entities :: proc(entities: ^[dynamic]Entity, num: int, bounds: ^Window_Bounds, color: rl.Color) {
+make_entities :: proc(entities: ^[dynamic]Entity, num: int, bounds: ^Window_Bounds) {
 	for i := 0; i < num; i += 1 {
-		append(entities, make_entity(bounds.lower, bounds.upper, color))
+		append(entities, make_entity(bounds.lower, bounds.upper))
 	}
 }
 
 draw_entity :: proc(e: ^Entity) {
-	when ODIN_DEBUG do draw_shape_debug(&e.shape)
+	// when ODIN_DEBUG do draw_shape_debug(&e.shape)
 	draw_shape_filled(&e.shape, e.color)
 }
 
@@ -52,8 +55,10 @@ draw_entities :: proc(entities: [dynamic]Entity) {
 }
 
 update_entity :: proc(e: ^Entity, dt: f32, bounds: ^Window_Bounds) {
-	resolve_rigid_body(&e.body, dt)
-	translate_shape(&e.shape, e.body.velocity * dt, bounds.lower, bounds.upper)
+	if !e.static {
+		resolve_rigid_body(&e.body, dt)
+		translate_shape(&e.shape, e.body.velocity * dt, bounds.lower, bounds.upper)
+	}
 }
 
 update_entities :: proc(entities: [dynamic]Entity, dt: f32, bounds: ^Window_Bounds) {

@@ -34,7 +34,7 @@ perpendicular :: proc(v: rl.Vector2) -> rl.Vector2 {
 	return { -v.y, v.x }
 }
 
-index_at :: proc(arr: ^[dynamic]$T, el: ^T) -> (index := -1, res := false) {
+index_at :: proc(arr: ^[dynamic]$T, el: ^T) -> (index := -1, ok := false) {
 	for &e, i in arr {
 		if el == &e do return i, true
 	}
