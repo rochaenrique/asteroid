@@ -1,7 +1,7 @@
 package asteroid
 import rl "vendor:raylib"
 
-update_player_rotate :: proc(p: ^Entity, dt: f32) {
+update_player_rotate :: proc(id: EntityId, dt: f32) {
 
 	// FORWARD :: rl.Vector2{1, 0}
 	// BACKWARD :: rl.Vector2{-1, 0}

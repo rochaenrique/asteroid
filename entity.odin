@@ -41,25 +41,23 @@ delete_entity :: proc(e: ^Entity) {
 	delete_shape(&e.shape)
 }
 
-draw_entity :: proc(e: ^Entity) {
+draw_entity :: proc(id: EntityId) {
 	// when ODIN_DEBUG do draw_shape_debug(&e.shape)
-	draw_shape_filled(&e.shape, e.color)
+	if e := game_get_entity(id); e != nil {
+		draw_shape_filled(&e.shape, e.color)
+	}
 }
 
-draw_entities :: proc(entities: [dynamic]Entity) {
-	for &e in entities do draw_entity(&e)
-}
-
-update_entity :: proc(e: ^Entity, dt: f32, bounds: ^Window_Bounds) {
-	if !e.static {
+update_entity :: proc(id: EntityId, dt: f32, bounds: ^Window_Bounds) {
+	if e := game_get_entity(id); e != nil && !e.static {
 		resolve_rigid_body(&e.body, dt)
 		translate_shape(&e.shape, e.body.velocity * dt, bounds.lower, bounds.upper)
 	}
 }
 
-update_entities :: proc(entities: [dynamic]Entity, dt: f32, bounds: ^Window_Bounds) {
-	for &e in entities {
-		update_entity(&e, dt, bounds)
+update_entities :: proc(dt: f32, bounds: ^Window_Bounds) {
+	update_collisions()
+	for i in 0..<game_entity_count() {
+		update_entity(EntityId(i), dt, bounds)
 	}
-	update_collisions(entities)
 }
