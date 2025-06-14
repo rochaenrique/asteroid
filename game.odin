@@ -1,6 +1,7 @@
 package asteroid
 import rl "vendor:raylib"
 import "core:math"
+import "core:fmt"
 import ease "core:math/ease"
 
 WINDOW_BOUNDS_OFFSET : f32 : 0.08
@@ -61,8 +62,8 @@ game_add_entity :: proc(entity: Entity) -> EntityId {
 	return EntityId(len(g.entities) - 1)
 }
 
-game_create_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, static: bool, color: rl.Color) -> EntityId {
-	return game_add_entity(make_entity_poly(position, sides, radius, static, color))
+game_create_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, static: bool, health := f32(1), color: rl.Color) -> EntityId {
+	return game_add_entity(make_entity_poly(position, sides, radius, static, health, color))
 }
 
 game_create_entity_windowed :: proc() -> EntityId {
@@ -79,14 +80,6 @@ game_destroy_entity :: proc(entity: EntityId) {
 }
 
 destroy_entities :: proc() {
-	for &index in g.entities_to_destroy {
-		if e := game_get_entity(index); e != nil {
-			delete_entity(&g.entities[index])
-			g.alive_entities[index] = false
-		}
-	}
-
-	clear(&g.entities_to_destroy)
 }
 
 debug_camera_update :: proc(camera: ^rl.Camera2D) {
@@ -156,7 +149,7 @@ game_init :: proc() {
 	}
 	
 	center := get_window_center()
-	g.player = game_create_entity(center, 3, center.x * 0.03, false, rl.BLUE)
+	g.player = game_create_entity(center, 3, center.x * 0.03, false, 20.0, rl.BLUE)
 
 	g.anims = ease.flux_init(f32)
 }
@@ -165,8 +158,16 @@ game_init :: proc() {
 game_update :: proc() {
 	update()
 	draw()
-	if len(g.entities_to_destroy) > 0 {
-		destroy_entities()
+	if len(g.entities_to_destroy) != 0 {
+		fmt.printfln("Destroying %d entities", len(g.entities_to_destroy))
+		for &index in g.entities_to_destroy {
+			e := game_get_entity(index)
+			if e != nil {
+				delete_entity(&g.entities[index])
+				g.alive_entities[index] = false
+			}
+		}
+		clear(&g.entities_to_destroy)
 	}
 	free_all(context.temp_allocator)
 }

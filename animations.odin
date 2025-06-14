@@ -67,7 +67,7 @@ animate_point :: proc(position: rl.Vector2, ms : i64 = 1000) {
 	// red fade -> destroy
 	radius := rl.GetScreenToWorld2D(g.window_bounds.upper, g.camera).y * 0.01
 	
-	entity := game_create_entity(position, 10, radius, true, rl.GREEN)
+	entity := game_create_entity(position, 10, radius, true, 1.0, rl.GREEN)
 	anim_data := make_anim_data(entity)
 	duration := time.Millisecond * cast(time.Duration)ms 
 

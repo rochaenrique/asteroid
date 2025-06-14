@@ -10,18 +10,20 @@ Entity :: struct {
 	shape: Shape,
 	color: rl.Color,
 	static: bool,
+	health: f32,
 }
 
-make_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, static := false, color := rl.GRAY) -> Entity {
+make_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, static := false, health := f32(1), color := rl.GRAY) -> Entity {
 	return {
 		body = make_rigid_body(),
 		shape = make_shape(position, sides, radius, 0),
 		static = static,
 		color = color,
+		health = health,
 	}
 }
 
-make_entity_rand :: proc(lower, upper: rl.Vector2, static := false, color := rl.GRAY) -> Entity {
+make_entity_rand :: proc(lower, upper: rl.Vector2, static := false, health := f32(1), color := rl.GRAY) -> Entity {
 	sides := 5+rand.int_max(9)
 	body := make_rigid_body_rand(lower, upper)
 	return {
@@ -29,6 +31,7 @@ make_entity_rand :: proc(lower, upper: rl.Vector2, static := false, color := rl.
 		shape = make_shape(rand_vec2(lower, upper), sides, body.mass, 0),
 		static = static,
 		color = color,
+		health = health,
 	}
 }
 
@@ -44,7 +47,8 @@ delete_entity :: proc(e: ^Entity) {
 draw_entity :: proc(id: EntityId) {
 	// when ODIN_DEBUG do draw_shape_debug(&e.shape)
 	if e := game_get_entity(id); e != nil {
-		draw_shape_filled(&e.shape, e.color)
+		color := rl.ColorLerp(e.color, rl.RED, 1.0 - e.health)
+		draw_shape_filled(&e.shape, color)
 	}
 }
 
