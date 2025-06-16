@@ -2,5 +2,5 @@ asteroid
 build/
 *\.a
 *.dSYM
-game_hot_reload.a
-hot_reload_game
+asteroid_game
+asteroid_game.dSYM

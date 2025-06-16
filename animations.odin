@@ -10,6 +10,7 @@ Entity_Anim_Data :: struct {
 }
 
 make_anim_data :: proc(entity: EntityId, value := f32(0)) -> ^Entity_Anim_Data {
+	if game_get_entity(entity) == nil do return nil
 	data := new(Entity_Anim_Data)
 	data^ = {
 		entity = entity,
@@ -73,14 +74,29 @@ animate_point :: proc(position: rl.Vector2, ms : i64 = 1000) {
 
 	tween := ease.flux_to(&g.anims, anim_data.value, 10, .Exponential_Out, duration)
 	tween.data = anim_data
-	tween.on_complete = point_anim_on_complete
+	tween.on_complete = timed_death_anim_on_complete	
 	
 	ease.flux_tween_init(tween, duration)
 }
 
-point_anim_on_complete :: proc(flux: ^ease.Flux_Map(f32), data: rawptr) {
+// ---------------------------------------------------------------------------
+// Timed Death animation
+// ---------------------------------------------------------------------------
+animate_entity_death_timed :: proc(e: EntityId, ms : i64 = 1000) {
+	anim_data := make_anim_data(e)
+	if anim_data == nil do return
+
+	duration := time.Millisecond * cast(time.Duration)ms
+	
+	tween := ease.flux_to(&g.anims, anim_data.value, 10, .Sine_In, duration)
+	tween.data = anim_data
+	tween.on_complete = timed_death_anim_on_complete
+	
+	ease.flux_tween_init(tween, duration)
+}
+
+timed_death_anim_on_complete :: proc(flux: ^ease.Flux_Map(f32), data: rawptr) {
 	anim_data := cast(^Entity_Anim_Data)data
 	game_destroy_entity(anim_data.entity)
 	destroy_anim_data(anim_data)
 }
-

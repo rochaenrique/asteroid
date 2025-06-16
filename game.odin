@@ -2,10 +2,11 @@ package asteroid
 import rl "vendor:raylib"
 import "core:math"
 import "core:fmt"
+import "core:strings"
 import ease "core:math/ease"
 
 WINDOW_BOUNDS_OFFSET : f32 : 0.08
-INIT_ASTEROIDS_N :: 0
+INIT_ASTEROIDS_N :: 20
 
 Game_Memory :: struct {
 	window_bounds: Window_Bounds,
@@ -25,6 +26,54 @@ Window_Bounds :: struct {
 }
 
 g: ^Game_Memory
+
+@(export)
+game_init :: proc() {
+	g = new(Game_Memory)
+	
+	screen := rl.Vector2{ f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()) }
+	g.camera = rl.Camera2D{
+		offset = screen / 2,
+		target = screen / 2,
+		rotation = 0,
+		zoom = 1,
+	}
+	set_window_bounds(&g.window_bounds)
+
+	g.entities = make([dynamic]Entity, 0, INIT_ASTEROIDS_N+1)
+	g.alive_entities = make([dynamic]bool, 0, INIT_ASTEROIDS_N+1)
+	g.entities_to_destroy = make([dynamic]EntityId)
+	for i := 0; i < INIT_ASTEROIDS_N; i += 1 {
+		game_create_entity()
+	}
+	
+	center := get_window_center()
+	
+	g.player = {
+		id = game_create_entity(center, 3, center.x * 0.03, false, 20.0, rl.BLUE),
+		mode = .Drive,
+	}
+	
+	g.anims = ease.flux_init(f32)
+}
+
+@(export) 
+game_update :: proc() {
+	update()
+	draw()
+	if len(g.entities_to_destroy) != 0 {
+		fmt.printfln("Destroying %d entities", len(g.entities_to_destroy))
+		for &index in g.entities_to_destroy {
+			e := game_get_entity(index)
+			if e != nil {
+				delete_entity(&g.entities[index])
+				g.alive_entities[index] = false
+			}
+		}
+		clear(&g.entities_to_destroy)
+	}
+	free_all(context.temp_allocator)
+}
 
 set_window_bounds :: proc(bounds: ^Window_Bounds, offset := WINDOW_BOUNDS_OFFSET) {
 	screen_world := rl.GetScreenToWorld2D(rl.Vector2{ f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()) }, g.camera)
@@ -102,14 +151,16 @@ update :: proc() {
 	
 	dt := rl.GetFrameTime()
 	
-	if rl.IsKeyPressed(.H) || rl.IsWindowResized() {
+	if rl.IsWindowResized() {
 		set_window_bounds(&g.window_bounds)
 	}
 
-	if rl.IsKeyPressed(.M) {
+	if rl.IsKeyPressed(.F) {
+		g.player.mode = .Drive if g.player.mode == .Sport else .Sport
+	} else if rl.IsKeyPressed(.M) {
 		g.player.mode = Player_Mode((int(g.player.mode) + 1) % len(Player_Mode))
 	}
-	
+
 	update_player(&g.player, dt)
 	update_entities(dt, &g.window_bounds)
 	ease.flux_update(&g.anims, f64(dt))
@@ -132,65 +183,14 @@ draw :: proc() {
 
 	when ODIN_DEBUG { 
 		rl.DrawFPS(10, 10)
-		
-		mode_str : cstring
-		switch g.player.mode {
-		case .Drive: mode_str = "Drive"
-		case .Sport: mode_str = "Sport"
-		case .Park: mode_str = "Park"
+
+		str, ok := fmt.enum_value_to_string(g.player.mode)
+		if ok {
+			cstr := strings.clone_to_cstring(str, context.temp_allocator)
+			rl.DrawText(cstr, 10, 30, 30, rl.BLUE)
 		}
-		
-		rl.DrawText(mode_str, 10, 30, 20, rl.BLUE)		
 	}
     rl.EndDrawing()
-}
-
-@(export)
-game_init :: proc() {
-	g = new(Game_Memory)
-	
-	screen := rl.Vector2{ f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()) }
-	g.camera = rl.Camera2D{
-		offset = screen / 2,
-		target = screen / 2,
-		rotation = 0,
-		zoom = 1,
-	}
-	set_window_bounds(&g.window_bounds)
-
-	g.entities = make([dynamic]Entity, 0, INIT_ASTEROIDS_N+1)
-	g.alive_entities = make([dynamic]bool, 0, INIT_ASTEROIDS_N+1)
-	g.entities_to_destroy = make([dynamic]EntityId)
-	for i := 0; i < INIT_ASTEROIDS_N; i += 1 {
-		game_create_entity()
-	}
-	
-	center := get_window_center()
-	
-	g.player = {
-		id = game_create_entity(center, 3, center.x * 0.03, false, 20.0, rl.BLUE),
-		mode = .Drive,
-	}
-	
-	g.anims = ease.flux_init(f32)
-}
-
-@(export) 
-game_update :: proc() {
-	update()
-	draw()
-	if len(g.entities_to_destroy) != 0 {
-		fmt.printfln("Destroying %d entities", len(g.entities_to_destroy))
-		for &index in g.entities_to_destroy {
-			e := game_get_entity(index)
-			if e != nil {
-				delete_entity(&g.entities[index])
-				g.alive_entities[index] = false
-			}
-		}
-		clear(&g.entities_to_destroy)
-	}
-	free_all(context.temp_allocator)
 }
 
 @(export)
@@ -235,7 +235,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 game_window_init :: proc() {
 	rl.SetConfigFlags({ .WINDOW_RESIZABLE })
 	rl.InitWindow(800, 600, "Asteroid")
-	rl.SetTargetFPS(30)
+	rl.SetTargetFPS(60)
 }
 
 @(export)
