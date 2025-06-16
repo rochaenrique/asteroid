@@ -3,7 +3,8 @@ import rl "vendor:raylib"
 import gl "vendor:raylib/rlgl"
 
 Shape :: struct {
-	points: [dynamic]rl.Vector2,
+	points: [dynamic]rl.Vector2, // describes the points of the shape in world space
+//	center: rl.Vector2, should make life easier and avoid so many "mean" and "radius" calculations
 }
 
 make_shape_from_poly :: proc(origin: rl.Vector2, sides: int, radius : f32 = 1.0, rotation: f32 = 0.0) -> (shape: Shape) {
@@ -38,14 +39,14 @@ translate_shape :: proc(shape: ^Shape, translation: rl.Vector2, lower := rl.Vect
 draw_shape_debug :: proc(s: ^Shape) {
 	rl.DrawSplineLinear(raw_data(s.points), i32(len(s.points)), 2.0, rl.GREEN)
 	rl.DrawLineEx(s.points[0], s.points[len(s.points) - 1], 2.0, rl.GREEN)
-	
 	rl.DrawCircleV(shape_mean(s), 2.0, rl.GREEN)
 }
 
 draw_shape_filled :: proc(s: ^Shape, color: rl.Color) {
 	if len(s.points) < 3 do return
-	
-    gl.Begin(gl.TRIANGLES)
+
+	// TODO: use DrawTriangleFan :: proc(points: [^]Vector2, pointCount: c.int, color: Color) to boost performance	
+    gl.Begin(gl.TRIANGLES) 
     gl.Color4ub(color.r, color.g, color.b, color.a)
 
     for i := 1; i < len(s.points) - 1; i += 1 {

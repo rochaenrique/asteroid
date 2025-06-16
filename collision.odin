@@ -2,9 +2,9 @@ package asteroid
 import rl "vendor:raylib"
 import "core:math"
 
-RESTITUTION : f32 : 0.3
-SPEED_DAMAGE : f32 : 0.005
-EXPLOSION_ENERGY :: 600.0
+RESTITUTION : f32 : 0.8
+SPEED_DAMAGE : f32 : 0.0008
+EXPLOSION_ENERGY :: 800.0
 
 Collision :: struct {
 	a: EntityId,
@@ -132,7 +132,9 @@ entity_explode :: proc(entityId: EntityId, origin: rl.Vector2) {
 				color = rl.GRAY,
 				static = false,
 				health = 1.0,
-				shape = Shape{make([dynamic]rl.Vector2, 0, 3)},
+				shape = Shape{
+					points = make([dynamic]rl.Vector2, 0, 3),
+				},
 			}
 			append(&shard.shape.points, origin, vecs[i], vecs[(i + 1) % sides])
 

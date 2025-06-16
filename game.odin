@@ -5,17 +5,18 @@ import "core:fmt"
 import ease "core:math/ease"
 
 WINDOW_BOUNDS_OFFSET : f32 : 0.08
-INIT_ASTEROIDS_N :: 1
+INIT_ASTEROIDS_N :: 0
 
 Game_Memory :: struct {
 	window_bounds: Window_Bounds,
 	camera: rl.Camera2D,
 
-	player: EntityId,
 	entities: [dynamic]Entity,
 	alive_entities: [dynamic]bool,
 	entities_to_destroy: [dynamic]EntityId,
-	
+
+	player: Player,
+
 	anims: ease.Flux_Map(f32),
 }
 
@@ -105,14 +106,17 @@ update :: proc() {
 		set_window_bounds(&g.window_bounds)
 	}
 
-	update_player(g.player, dt)
+	if rl.IsKeyPressed(.M) {
+		g.player.mode = Player_Mode((int(g.player.mode) + 1) % len(Player_Mode))
+	}
+	
+	update_player(&g.player, dt)
 	update_entities(dt, &g.window_bounds)
 	ease.flux_update(&g.anims, f64(dt))
 }
 
 draw :: proc() {
     rl.BeginDrawing()
-	rl.DrawFPS(10, 10)
     rl.ClearBackground(rl.BLACK)
 	
 	rl.BeginMode2D(g.camera)
@@ -125,6 +129,19 @@ draw :: proc() {
 	}
 	
 	rl.EndMode2D()
+
+	when ODIN_DEBUG { 
+		rl.DrawFPS(10, 10)
+		
+		mode_str : cstring
+		switch g.player.mode {
+		case .Drive: mode_str = "Drive"
+		case .Sport: mode_str = "Sport"
+		case .Park: mode_str = "Park"
+		}
+		
+		rl.DrawText(mode_str, 10, 30, 20, rl.BLUE)		
+	}
     rl.EndDrawing()
 }
 
@@ -149,8 +166,12 @@ game_init :: proc() {
 	}
 	
 	center := get_window_center()
-	g.player = game_create_entity(center, 3, center.x * 0.03, false, 20.0, rl.BLUE)
-
+	
+	g.player = {
+		id = game_create_entity(center, 3, center.x * 0.03, false, 20.0, rl.BLUE),
+		mode = .Drive,
+	}
+	
 	g.anims = ease.flux_init(f32)
 }
 
@@ -214,7 +235,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 game_window_init :: proc() {
 	rl.SetConfigFlags({ .WINDOW_RESIZABLE })
 	rl.InitWindow(800, 600, "Asteroid")
-	rl.SetTargetFPS(60)
+	rl.SetTargetFPS(30)
 }
 
 @(export)

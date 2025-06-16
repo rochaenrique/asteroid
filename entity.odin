@@ -3,6 +3,9 @@ package asteroid
 import rl "vendor:raylib"
 import "core:math/rand"
 
+MIN_SHAPE_POINTS :: 7
+MAX_SHAPE_POINTS :: 10
+
 EntityId :: distinct int
 
 Entity :: struct {
@@ -24,7 +27,7 @@ make_entity_poly :: proc(position: rl.Vector2, sides: int, radius: f32, static :
 }
 
 make_entity_rand :: proc(lower, upper: rl.Vector2, static := false, health := f32(1), color := rl.GRAY) -> Entity {
-	sides := 5+rand.int_max(9)
+	sides := MIN_SHAPE_POINTS + rand.int_max(MAX_SHAPE_POINTS)
 	body := make_rigid_body_rand(lower, upper)
 	return {
 		body = body,
@@ -45,10 +48,11 @@ delete_entity :: proc(e: ^Entity) {
 }
 
 draw_entity :: proc(id: EntityId) {
-	// when ODIN_DEBUG do draw_shape_debug(&e.shape)
 	if e := game_get_entity(id); e != nil {
 		color := rl.ColorLerp(e.color, rl.RED, 1.0 - e.health)
 		draw_shape_filled(&e.shape, color)
+
+		when ODIN_DEBUG do draw_shape_debug(&e.shape)
 	}
 }
 
