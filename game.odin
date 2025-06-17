@@ -61,6 +61,8 @@ game_init :: proc() {
 game_update :: proc() {
 	update()
 	draw()
+
+	// resource freeing
 	if len(g.entities_to_destroy) != 0 {
 		fmt.printfln("Destroying %d entities", len(g.entities_to_destroy))
 		for &index in g.entities_to_destroy {
@@ -73,6 +75,55 @@ game_update :: proc() {
 		clear(&g.entities_to_destroy)
 	}
 	free_all(context.temp_allocator)
+}
+
+update :: proc() {
+	when ODIN_DEBUG {
+		debug_camera_update(&g.camera)
+	}
+	
+	dt := rl.GetFrameTime()
+	
+	if rl.IsWindowResized() {
+		set_window_bounds(&g.window_bounds)
+	}
+
+	if rl.IsKeyPressed(.F) {
+		g.player.mode = .Drive if g.player.mode == .Sport else .Sport
+	} else if rl.IsKeyPressed(.M) {
+		g.player.mode = Player_Mode((int(g.player.mode) + 1) % len(Player_Mode))
+	}
+
+	update_player(&g.player, dt)
+	update_entities(dt, &g.window_bounds)
+	ease.flux_update(&g.anims, f64(dt))
+}
+
+draw :: proc() {
+    rl.BeginDrawing()
+    rl.ClearBackground(rl.BLACK)
+	
+	rl.BeginMode2D(g.camera)
+	for i in 0..<len(g.entities) {
+		draw_entity(EntityId(i))
+	}
+	
+	when ODIN_DEBUG {
+		rl.DrawRectangleLinesEx(window_bounds_rect(&g.window_bounds), 2, rl.RED)
+	}
+	
+	rl.EndMode2D()
+
+	when ODIN_DEBUG { 
+		rl.DrawFPS(10, 10)
+
+		str, ok := fmt.enum_value_to_string(g.player.mode)
+		if ok {
+			cstr := strings.clone_to_cstring(str, context.temp_allocator)
+			rl.DrawText(cstr, 10, 30, 30, rl.BLUE)
+		}
+	}
+    rl.EndDrawing()
 }
 
 set_window_bounds :: proc(bounds: ^Window_Bounds, offset := WINDOW_BOUNDS_OFFSET) {
@@ -144,54 +195,6 @@ debug_camera_update :: proc(camera: ^rl.Camera2D) {
 	}
 }
 
-update :: proc() {
-	when ODIN_DEBUG {
-		debug_camera_update(&g.camera)
-	}
-	
-	dt := rl.GetFrameTime()
-	
-	if rl.IsWindowResized() {
-		set_window_bounds(&g.window_bounds)
-	}
-
-	if rl.IsKeyPressed(.F) {
-		g.player.mode = .Drive if g.player.mode == .Sport else .Sport
-	} else if rl.IsKeyPressed(.M) {
-		g.player.mode = Player_Mode((int(g.player.mode) + 1) % len(Player_Mode))
-	}
-
-	update_player(&g.player, dt)
-	update_entities(dt, &g.window_bounds)
-	ease.flux_update(&g.anims, f64(dt))
-}
-
-draw :: proc() {
-    rl.BeginDrawing()
-    rl.ClearBackground(rl.BLACK)
-	
-	rl.BeginMode2D(g.camera)
-	for i in 0..<len(g.entities) {
-		draw_entity(EntityId(i))
-	}
-	
-	when ODIN_DEBUG {
-		rl.DrawRectangleLinesEx(window_bounds_rect(&g.window_bounds), 2, rl.RED)
-	}
-	
-	rl.EndMode2D()
-
-	when ODIN_DEBUG { 
-		rl.DrawFPS(10, 10)
-
-		str, ok := fmt.enum_value_to_string(g.player.mode)
-		if ok {
-			cstr := strings.clone_to_cstring(str, context.temp_allocator)
-			rl.DrawText(cstr, 10, 30, 30, rl.BLUE)
-		}
-	}
-    rl.EndDrawing()
-}
 
 @(export)
 game_running :: proc() -> bool {
