@@ -2,13 +2,17 @@ package asteroid
 import rl "vendor:raylib"
 import "core:math"
 import "core:fmt"
-import "core:strings"
 import ease "core:math/ease"
+import sa "core:container/small_array"
 
 WINDOW_BOUNDS_OFFSET : f32 : 0.08
 INIT_ASTEROIDS_N :: 20
 
+MAX_SCENES :: 10
+
 Game_Memory :: struct {
+	scenes: sa.Small_Array(MAX_SCENES, Scene_Type),
+	
 	window_bounds: Window_Bounds,
 	camera: rl.Camera2D,
 
@@ -32,36 +36,42 @@ game_init :: proc() {
 	g = new(Game_Memory)
 	
 	screen := rl.Vector2{ f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()) }
+	// this camera does basically nothing
 	g.camera = rl.Camera2D{
 		offset = screen / 2,
 		target = screen / 2,
 		rotation = 0,
 		zoom = 1,
 	}
-	set_window_bounds(&g.window_bounds)
+	set_window_bounds(&g.window_bounds) // sets initial window bounds according to runtime window size
 
-	g.entities = make([dynamic]Entity, 0, INIT_ASTEROIDS_N+1)
-	g.alive_entities = make([dynamic]bool, 0, INIT_ASTEROIDS_N+1)
-	g.entities_to_destroy = make([dynamic]EntityId)
-	for i := 0; i < INIT_ASTEROIDS_N; i += 1 {
-		game_create_entity()
-	}
-	
-	center := get_window_center()
-	
-	g.player = {
-		id = game_create_entity(center, 3, center.x * 0.03, false, 20.0, rl.BLUE),
-		mode = .Drive,
-	}
-	
-	g.anims = ease.flux_init(f32)
+	// initial scenes
+	sa.push(&g.scenes, Scene_Type.Menu)
+	Scene_Table[.Menu].init()
 }
 
 @(export) 
 game_update :: proc() {
-	update()
-	draw()
+	when ODIN_DEBUG {
+		debug_camera_update(&g.camera)
+	}
+	if rl.IsWindowResized() {
+		set_window_bounds(&g.window_bounds)
+	}
+	
+	dt := rl.GetFrameTime()
+	{
+		scene_update(dt)
+	}
 
+    rl.BeginDrawing()
+	{
+		rl.ClearBackground(rl.BLACK)
+		scene_draw()
+	}
+	rl.DrawFPS(10, 10)
+    rl.EndDrawing()
+	
 	// resource freeing
 	if len(g.entities_to_destroy) != 0 {
 		fmt.printfln("Destroying %d entities", len(g.entities_to_destroy))
@@ -75,55 +85,6 @@ game_update :: proc() {
 		clear(&g.entities_to_destroy)
 	}
 	free_all(context.temp_allocator)
-}
-
-update :: proc() {
-	when ODIN_DEBUG {
-		debug_camera_update(&g.camera)
-	}
-	
-	dt := rl.GetFrameTime()
-	
-	if rl.IsWindowResized() {
-		set_window_bounds(&g.window_bounds)
-	}
-
-	if rl.IsKeyPressed(.F) {
-		g.player.mode = .Drive if g.player.mode == .Sport else .Sport
-	} else if rl.IsKeyPressed(.M) {
-		g.player.mode = Player_Mode((int(g.player.mode) + 1) % len(Player_Mode))
-	}
-
-	update_player(&g.player, dt)
-	update_entities(dt, &g.window_bounds)
-	ease.flux_update(&g.anims, f64(dt))
-}
-
-draw :: proc() {
-    rl.BeginDrawing()
-    rl.ClearBackground(rl.BLACK)
-	
-	rl.BeginMode2D(g.camera)
-	for i in 0..<len(g.entities) {
-		draw_entity(EntityId(i))
-	}
-	
-	when ODIN_DEBUG {
-		rl.DrawRectangleLinesEx(window_bounds_rect(&g.window_bounds), 2, rl.RED)
-	}
-	
-	rl.EndMode2D()
-
-	when ODIN_DEBUG { 
-		rl.DrawFPS(10, 10)
-
-		str, ok := fmt.enum_value_to_string(g.player.mode)
-		if ok {
-			cstr := strings.clone_to_cstring(str, context.temp_allocator)
-			rl.DrawText(cstr, 10, 30, 30, rl.BLUE)
-		}
-	}
-    rl.EndDrawing()
 }
 
 set_window_bounds :: proc(bounds: ^Window_Bounds, offset := WINDOW_BOUNDS_OFFSET) {
@@ -203,14 +164,10 @@ game_running :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
-	for _, &tween in &g.anims.values {
-		tween.on_complete(&g.anims, tween.data)
-	}
-	ease.flux_destroy(g.anims)
+	curr, ok := scene_current()
+	if ok do curr.destroy()
 	
-	for alive, index in &g.alive_entities {
-		if alive && index <= len(g.entities) do delete_entity(&g.entities[index])
-	}
+	sa.clear(&g.scenes)
 	
 	delete(g.entities)
 	delete(g.alive_entities)
@@ -239,6 +196,7 @@ game_window_init :: proc() {
 	rl.SetConfigFlags({ .WINDOW_RESIZABLE })
 	rl.InitWindow(800, 600, "Asteroid")
 	rl.SetTargetFPS(60)
+	rl.SetExitKey(.KEY_NULL)
 }
 
 @(export)
