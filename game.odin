@@ -11,7 +11,7 @@ INIT_ASTEROIDS_N :: 20
 MAX_SCENES :: 10
 
 Game_Memory :: struct {
-	scenes: sa.Small_Array(MAX_SCENES, Scene_Type),
+	scenes: sa.Small_Array(MAX_SCENES, Scene_Type), // scene stack
 	
 	window_bounds: Window_Bounds,
 	camera: rl.Camera2D,
@@ -22,7 +22,7 @@ Game_Memory :: struct {
 
 	player: Player,
 
-	anims: ease.Flux_Map(f32),
+	anims: ease.Flux_Map(f32), // animation flux map
 }
 
 Window_Bounds :: struct {

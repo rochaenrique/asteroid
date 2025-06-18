@@ -4,15 +4,15 @@ import "core:fmt"
 import "core:strings"
 import ease "core:math/ease"
 import sa "core:container/small_array"
+import "ui"
 
 Scene_Type :: enum {
-	None,
 	Menu,  // main menu screen
 	Play,  // regular playing screen
 	Pause, // pause during play or maybe menu even? 
 }
 
-Scene_Table := #partial [Scene_Type]Scene {
+Scene_Table := [Scene_Type]Scene {
 		.Menu  = { menu_init,  menu_destroy,  menu_update,  menu_draw  },
 		.Play  = { play_init,  play_destroy,  play_update,  play_draw  },
 		.Pause = { pause_init, pause_destroy, pause_update, pause_draw },
@@ -41,13 +41,13 @@ scene_draw :: proc() {
 	if ok do curr.draw()
 }
 
-// always returning after calling!!
+// always return after calling!!
 scene_pop_handle :: proc() {
 	type, ok := sa.pop_back_safe(&g.scenes)
 	if ok do Scene_Table[type].destroy()
 }
 
-// always returning after calling!!
+// always return after calling!!
 scene_push_handle :: proc(scene: Scene_Type) {
 	sa.push_back(&g.scenes, scene)
 	Scene_Table[scene].init()
@@ -68,17 +68,16 @@ menu_update :: proc(dt: f32) {
 }
 
 menu_draw :: proc() {
-	MENU_TITLE :: "Menu"
-	TITLE_SIZE :: 40
-	
-	width := rl.MeasureText(MENU_TITLE, TITLE_SIZE)
-	center := get_window_center()
-	rl.DrawText(MENU_TITLE, i32(center.x - f32(width) / 2), i32(center.y), TITLE_SIZE, rl.RAYWHITE)
+	ui.draw_text_stack(
+		get_window_center(),
+		20,
+		{ "Asteroid", 100, 100 },
+		{ "(Press ENTER to Play)", 20, 1 },
+	)
 }
 
 menu_destroy :: proc() {
 }
-
 
 // ---------------------------------------------------------------------------
 // Play/level screen
@@ -168,13 +167,7 @@ pause_update :: proc(dt: f32) {
 }
 
 pause_draw :: proc() {
-	MENU_TITLE :: "Pause"
-	TITLE_SIZE :: 30
-	
-	width := rl.MeasureText(MENU_TITLE, TITLE_SIZE)
-	center := get_window_center()
-	rl.DrawText(MENU_TITLE, i32(center.x - f32(width) / 2), i32(center.y), TITLE_SIZE, rl.RAYWHITE)
-	
+	ui.draw_text_centered("Pause", 30, get_window_center())
 }
 
 pause_destroy :: proc() {
