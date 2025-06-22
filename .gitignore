@@ -2,5 +2,6 @@ asteroid
 build/
 *\.a
 *.dSYM
+.DS_Store
 asteroid_game
 asteroid_game.dSYM
