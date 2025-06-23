@@ -60,22 +60,17 @@ scene_push_handle :: proc(scene: Scene_Type) {
 menu_init :: proc() {
 	ui.init()
 
-	left_relative_half := ui.Layout{ .Left, .Relative, rl.Vector2(10), rl.Vector2(0.5) }
-	
 	ui.root(
-		ui.node(left_relative_half, rl.PINK,
-				ui.node(left_relative_half, rl.RED,
-						ui.node(left_relative_half, rl.BLUE,
-								ui.node(left_relative_half, rl.RED,
-										ui.node({ .Center, .Absolute, rl.Vector2(0), rl.Vector2(0) },
-												rl.BLUE,
-												ui.Text{ "(Asteroid)", 10, 1 }),
-									   ),
-							   ),
-					   ),				
+		ui.node({ alignment = .Center, scaling = .Relative, size = rl.Vector2{1, 0.3} }, rl.BLANK,
+				ui.node({ alignment = .Top, scaling = .Fill }, rl.WHITE,
+						ui.Text{ text = "Asteroid", spacing = 50 },
+					   ),
+				ui.node({ alignment = .Bottom, scaling = .Relative, size = rl.Vector2(0.1) }, rl.WHITE,
+						ui.Text{ text = "Press <ENTER>", spacing = 10 },
+					   ),
 			   ),
 	)
-
+	
 	ui.update()	
 }
 

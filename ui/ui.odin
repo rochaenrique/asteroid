@@ -5,24 +5,26 @@ import vmem "core:mem/virtual"
 import "base:runtime"
 
 Alignment :: enum {
-	Center,
-	Top_Left,
-	Absolute,
-	Relative,
+	Center,		// centered inside the parent container
+	Top_Left,	// position is equal to the parents top left corner
+	Absolute,	// use specified position in pixels of screen
+	Relative,	// x and y are scaling factors of parent space
 
-	Horizontal,
-	Vertical,
+	Horizontal,	// Center-y and x is scaling factor of parent space
+	Vertical,	// Center-x and y is scaling factor of parent space
 
-	Top,
-	Bottom,
-	Left,
-	Right,
+	Top,		// Center-x in the top edge
+	Bottom,		// Center-x in the bottom edge
+	Left,		// Center-y to the left edge
+	Right,		// Center-y to the right edge
 }
 
 Scaling :: enum {
-	// Fill,
-	Relative,
-	Absolute, 
+	Relative,	// size acts as a scaling factor of the parent
+	Fill,		// fill the parent container, ignoring overflow
+	Max_Width,	// max width, capping at height overflow
+	Max_Height,	// max height, capping at width overflow
+	Absolute,	// use the specified size in pixels
 }
 
 Layout :: struct {
@@ -50,7 +52,7 @@ Node :: struct {
 
 Text :: struct {
 	text: cstring,
-	font_size, spacing: f32,
+	spacing: f32,
 }
 
 DEFAULT_SPACING : f32 : 1.0
@@ -123,14 +125,28 @@ update :: proc() {
 update_node :: proc(node: ^Node, parent_layout: Layout) {
 	if node == nil do return
 
-	switch content in node.content {
+	switch &content in node.content {
 	case []Node:
-		if node.layout.scaling == .Relative {
-			node.layout.size *= parent_layout.size
+		switch node.layout.scaling {
+		case .Relative: node.layout.size *= parent_layout.size
+		case .Fill: node.layout.size = parent_layout.size
+		case .Max_Width: unimplemented()
+		case .Max_Height: unimplemented()
+		case .Absolute: // do nothing
 		}
 	case Text:
-		if node.layout.scaling == .Absolute {
-			node.layout.size = rl.MeasureTextEx(rl.GetFontDefault(), content.text, content.font_size, content.spacing)
+		switch node.layout.scaling {
+		case .Relative:
+			node.layout.size = text_measure(content, node.layout.size.y * parent_layout.size.y)
+			
+		case .Fill: // text height will be maximized on parent container, ignoring overflow
+			node.layout.size = text_measure(content, parent_layout.size.y)
+
+		case .Max_Width: unimplemented()
+		case .Max_Height: unimplemented()
+			
+		case .Absolute: // Y of size is used in font_size units, X adjusted accordingly
+			node.layout.size = text_measure(content, node.layout.size.y)
 		}
 	}
 	
@@ -141,8 +157,7 @@ update_node :: proc(node: ^Node, parent_layout: Layout) {
 	case .Top_Left:
 		node.layout.position = parent_layout.position
 
-	case .Absolute:
-		// do nothing here
+	case .Absolute: // do nothing here
 		
 	case .Relative:
 		node.layout.position = parent_layout.position + node.layout.position * parent_layout.size
@@ -189,9 +204,7 @@ update_node :: proc(node: ^Node, parent_layout: Layout) {
 		for &child in content {
 			update_node(&child, node.layout)
 		}
-	case Text:
-		// do nothing here
-
+	case Text: // do nothing here
 	}
 }
 
@@ -210,6 +223,6 @@ draw_node :: proc(node: ^Node) {
 			draw_node(&child)
 		}		
 	case Text:
-		rl.DrawTextEx(rl.GetFontDefault(), content.text, node.layout.position, content.font_size, content.spacing, node.color)
+		rl.DrawTextEx(rl.GetFontDefault(), content.text, node.layout.position, node.layout.size.y, content.spacing, node.color)
 	}	
 }
