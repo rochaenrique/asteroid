@@ -58,6 +58,25 @@ scene_push_handle :: proc(scene: Scene_Type) {
 // ---------------------------------------------------------------------------
 
 menu_init :: proc() {
+	ui.init()
+
+	left_relative_half := ui.Layout{ .Left, .Relative, rl.Vector2(10), rl.Vector2(0.5) }
+	
+	ui.root(
+		ui.node(left_relative_half, rl.PINK,
+				ui.node(left_relative_half, rl.RED,
+						ui.node(left_relative_half, rl.BLUE,
+								ui.node(left_relative_half, rl.RED,
+										ui.node({ .Center, .Absolute, rl.Vector2(0), rl.Vector2(0) },
+												rl.BLUE,
+												ui.Text{ "(Asteroid)", 10, 1 }),
+									   ),
+							   ),
+					   ),				
+			   ),
+	)
+
+	ui.update()	
 }
 
 menu_update :: proc(dt: f32) {
@@ -65,18 +84,18 @@ menu_update :: proc(dt: f32) {
 		scene_push_handle(.Play)
 		return
 	}
+
+	if rl.IsWindowResized() {
+		ui.update()
+	}
 }
 
 menu_draw :: proc() {
-	ui.draw_text_stack(
-		get_window_center(),
-		20,
-		{ "Asteroid", 100, 100 },
-		{ "(Press ENTER to Play)", 20, 1 },
-	)
+	ui.draw()
 }
 
 menu_destroy :: proc() {
+	ui.destroy()
 }
 
 // ---------------------------------------------------------------------------
@@ -96,7 +115,7 @@ play_init :: proc() {
 	center := get_window_center()
 	g.player = {
 		id = game_create_entity(center, 3, center.x * 0.03, false, 20.0, rl.BLUE),
-		mode = .Drive,
+		mode = .Park,
 	}
 	
 	g.anims = ease.flux_init(f32)
@@ -157,6 +176,17 @@ play_destroy :: proc() {
 // ---------------------------------------------------------------------------
 
 pause_init :: proc() {
+	ui.init()
+
+	ui.root(
+		ui.node({ .Absolute, .Absolute, rl.Vector2(0), rl.Vector2(50) }, rl.WHITE,
+				ui.node({ .Center, .Absolute, rl.Vector2(0), rl.Vector2(50) }, rl.BLUE),
+			   ),
+		ui.node({ .Absolute, .Absolute, rl.Vector2(10), rl.Vector2(10) }, rl.PURPLE,
+			   ),
+	)
+
+	ui.update()
 }
 
 pause_update :: proc(dt: f32) {
@@ -164,11 +194,16 @@ pause_update :: proc(dt: f32) {
 		scene_pop_handle()
 		return
 	}
+
+	if rl.IsWindowResized() {
+		ui.update()
+	}
 }
 
 pause_draw :: proc() {
-	ui.draw_text_centered("Pause", 30, get_window_center())
+	ui.draw()
 }
 
 pause_destroy :: proc() {
+	ui.destroy()
 }

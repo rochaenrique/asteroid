@@ -1,6 +1,52 @@
 package ui
 
 import rl "vendor:raylib"
+import vmem "core:mem/virtual"
+import "base:runtime"
+
+Alignment :: enum {
+	Center,
+	Top_Left,
+	Absolute,
+	Relative,
+
+	Horizontal,
+	Vertical,
+
+	Top,
+	Bottom,
+	Left,
+	Right,
+}
+
+Scaling :: enum {
+	// Fill,
+	Relative,
+	Absolute, 
+}
+
+Layout :: struct {
+	alignment: Alignment,
+	scaling: Scaling,
+	position: rl.Vector2,
+	size: rl.Vector2,
+}
+
+Tree :: struct {
+	root: ^Node,
+	allocator: runtime.Allocator,
+	arena: vmem.Arena,
+}
+
+Node :: struct {
+	layout: Layout,
+	color: rl.Color,
+	
+	content: union {
+		[]Node,
+		Text,
+	},
+}
 
 Text :: struct {
 	text: cstring,
@@ -9,35 +55,161 @@ Text :: struct {
 
 DEFAULT_SPACING : f32 : 1.0
 
-draw_text_centered_pos :: proc(text: cstring, font_size: f32, position: rl.Vector2, spacing := f32(1)) {
-	measure := rl.MeasureTextEx(rl.GetFontDefault(), text, font_size, spacing)
-	adjusted_pos := position - measure / 2
-	rl.DrawTextEx(rl.GetFontDefault(), text, adjusted_pos, font_size, DEFAULT_SPACING, rl.BLUE)
+@(private)
+ui_tree: ^Tree
+
+init :: proc() {
+	ui_tree = new(Tree)
+	err := vmem.arena_init_growing(&ui_tree.arena)
+	ensure(err == nil)
+	ui_tree.allocator = vmem.arena_allocator(&ui_tree.arena)
 }
 
-draw_text_centered_container :: proc(text: cstring, size: f32, rectangle: rl.Rectangle, spacing := f32(1)) {
-	draw_text_centered_pos(text, size, rectangle_center(rectangle))
+destroy :: proc() {
+	vmem.arena_destroy(&ui_tree.arena)
+	free(ui_tree)
 }
 
-draw_text_centered :: proc{
-	draw_text_centered_pos,
-	draw_text_centered_container,
+root :: proc(children: ..Node) {
+	ui_tree.root = new(Node, ui_tree.allocator)
+	ui_tree.root^ = {
+		content = make([]Node, len(children), ui_tree.allocator),
+		color = rl.BLACK,
+	}
+	copy(ui_tree.root.content.([]Node), children)
 }
 
-draw_text_stack :: proc(position: rl.Vector2, padding: f32, texts: ..Text) {
-	full_height := padding * f32(len(texts) - 1)
-	for &t in texts {
-		measure := rl.MeasureTextEx(rl.GetFontDefault(), t.text, t.font_size, t.spacing)
-		full_height += measure.y
+parent_node :: proc(layout: Layout, color: rl.Color, children: ..Node) -> Node {
+	node := new(Node, ui_tree.allocator)
+	node^ = {
+		layout = layout,
+		content = make([]Node, len(children), ui_tree.allocator),
+		color = color,
+	}
+	copy(node.content.([]Node), children)
+	return node^
+}
+
+text_node :: proc(layout: Layout, color: rl.Color, text: Text) -> Node {
+	node := new(Node, ui_tree.allocator)
+	node^ = {
+		layout = layout,
+		content = text,
+		color = color,
+	}
+	return node^
+}
+
+node :: proc {
+	parent_node,
+	text_node,
+}
+
+update :: proc() {
+	ui_tree.root.layout = {
+		position = rl.Vector2(0),
+		size = rl.Vector2{
+			f32(rl.GetScreenWidth()),
+			f32(rl.GetScreenHeight()),
+		},
 	}
 
-	curr_y := position.y - full_height / 2
-	for &t in texts {
-		measure := rl.MeasureTextEx(rl.GetFontDefault(), t.text, t.font_size, t.spacing)
-		
-		adjusted := rl.Vector2{position.x - measure.x / 2, curr_y}
-		rl.DrawTextEx(rl.GetFontDefault(), t.text, adjusted, t.font_size, t.spacing, rl.BLUE)
-		
-		curr_y += measure.y + padding
+	for &child in ui_tree.root.content.([]Node) {
+		update_node(&child, ui_tree.root.layout)
+	}	
+}
+
+@(private)
+update_node :: proc(node: ^Node, parent_layout: Layout) {
+	if node == nil do return
+
+	switch content in node.content {
+	case []Node:
+		if node.layout.scaling == .Relative {
+			node.layout.size *= parent_layout.size
+		}
+	case Text:
+		if node.layout.scaling == .Absolute {
+			node.layout.size = rl.MeasureTextEx(rl.GetFontDefault(), content.text, content.font_size, content.spacing)
+		}
 	}
+	
+	switch node.layout.alignment {
+	case .Center:
+		node.layout.position = centered(node.layout, parent_layout)
+		
+	case .Top_Left:
+		node.layout.position = parent_layout.position
+
+	case .Absolute:
+		// do nothing here
+		
+	case .Relative:
+		node.layout.position = parent_layout.position + node.layout.position * parent_layout.size
+
+	case .Horizontal:
+		node.layout.position = rl.Vector2{
+			parent_layout.position.x + node.layout.position.x * parent_layout.size.x,
+			center(parent_layout, Axis.Y),
+		}
+
+	case .Vertical:
+		node.layout.position = rl.Vector2{
+			center(parent_layout, Axis.X),
+			parent_layout.position.y + node.layout.position.y * parent_layout.size.y,
+		}
+
+	case .Top:
+		node.layout.position = rl.Vector2{
+			centered(node.layout, parent_layout, Axis.X),
+			parent_layout.position.y,
+		}
+
+	case .Bottom:
+		node.layout.position = rl.Vector2{
+			centered(node.layout, parent_layout, Axis.X),
+			edge_in_axis(node.layout, parent_layout, Axis.Y),
+		}		
+
+	case .Left:
+		node.layout.position = rl.Vector2{
+			parent_layout.position.x,
+			centered(node.layout, parent_layout, Axis.Y),
+		}
+
+	case .Right:
+		node.layout.position = rl.Vector2{
+			edge_in_axis(node.layout, parent_layout, Axis.X),
+			centered(node.layout, parent_layout, Axis.Y),
+		}				
+	}
+
+	switch content in node.content {
+	case []Node:
+		for &child in content {
+			update_node(&child, node.layout)
+		}
+	case Text:
+		// do nothing here
+
+	}
+}
+
+draw :: proc() {
+	draw_node(ui_tree.root)
+}
+
+@(private)
+draw_node :: proc(node: ^Node) {
+	if node == nil do return
+
+	switch content in node.content {
+	case []Node:
+		rl.DrawRectangleV(node.layout.position, node.layout.size, node.color)
+		for &child in content {
+			draw_node(&child)
+		}		
+	case Text:
+		rl.DrawTextEx(rl.GetFontDefault(), content.text, node.layout.position, content.font_size, content.spacing, node.color)
+	}	
 }
