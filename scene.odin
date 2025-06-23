@@ -173,11 +173,15 @@ play_destroy :: proc() {
 pause_init :: proc() {
 	ui.init()
 
+	faded_red := rl.RED - rl.Color{0, 0, 0, 170}
 	ui.root(
-		ui.node({ .Absolute, .Absolute, rl.Vector2(0), rl.Vector2(50) }, rl.WHITE,
-				ui.node({ .Center, .Absolute, rl.Vector2(0), rl.Vector2(50) }, rl.BLUE),
-			   ),
-		ui.node({ .Absolute, .Absolute, rl.Vector2(10), rl.Vector2(10) }, rl.PURPLE,
+		ui.node({ alignment = .Center, scaling = .Relative, size = rl.Vector2{1, 0.2} }, rl.BLANK,
+				ui.node({ alignment = .Top, scaling = .Relative, size = rl.Vector2(0.9) }, faded_red,
+						ui.Text{ text = "Pause", spacing = 50 },
+					   ),
+				ui.node({ alignment = .Bottom, scaling = .Relative, size = rl.Vector2(0.2) }, faded_red,
+						ui.Text{ text = "Press <ESC> to Return", spacing = 10 },
+					   ),
 			   ),
 	)
 
